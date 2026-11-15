@@ -1,0 +1,825 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/creme"
+    android:orientation="vertical">
+
+    <!-- NAVBAR -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp">
+
+        <LinearLayout
+            android:id="@+id/logo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_goutte" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFamily="serif"
+                android:text="Tunisia "
+                android:textColor="@color/bordeaux"
+                android:textSize="17sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="serif"
+                android:text="Smart Blood"
+                android:textColor="@color/rouge"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTopConnexion"
+            style="@style/BoutonBordeaux"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="44dp"
+            android:text="Se connecter"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bordure" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ================= ACCUEIL ================= -->
+        <ScrollView
+            android:id="@+id/viewAccueil"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- HERO -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        style="@style/Etiquette"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TUNISIA SMART BLOOD" />
+
+                    <TextView
+                        style="@style/Titre"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Un don de sang,\nune chance de vivre."
+                        android:textSize="36sp" />
+
+                    <TextView
+                        style="@style/Gris"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:lineSpacingMultiplier="1.3"
+                        android:text="Chaque don compte. Trouvez les campagnes de don de sang près de chez vous et participez à sauver des vies."
+                        android:textSize="17sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDecouvrir"
+                        style="@style/BoutonRouge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="24dp"
+                        android:text="Découvrir les campagnes" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="340dp"
+                        android:layout_marginTop="24dp">
+
+                        <ImageView
+                            android:layout_width="240dp"
+                            android:layout_height="300dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@null"
+                            android:src="@drawable/ic_goutte" />
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="top|start"
+                            android:layout_marginTop="20dp"
+                            app:cardBackgroundColor="@color/white"
+                            app:cardCornerRadius="18dp"
+                            app:cardElevation="6dp">
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:padding="12dp">
+
+                                <TextView
+                                    android:layout_width="44dp"
+                                    android:layout_height="44dp"
+                                    android:background="@drawable/bg_groupe"
+                                    android:gravity="center"
+                                    android:text="O−"
+                                    android:textColor="#A30B3E"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:text="besoin urgent"
+                                    android:textColor="@color/texte"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom|end"
+                            android:layout_marginBottom="20dp"
+                            app:cardBackgroundColor="@color/white"
+                            app:cardCornerRadius="18dp"
+                            app:cardElevation="6dp">
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:padding="12dp">
+
+                                <TextView
+                                    android:layout_width="44dp"
+                                    android:layout_height="44dp"
+                                    android:background="@drawable/bg_groupe"
+                                    android:gravity="center"
+                                    android:text="A+"
+                                    android:textColor="#A30B3E"
+                                    android:textSize="16sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="10dp"
+                                    android:text="Donneur disponible"
+                                    android:textColor="@color/texte"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+                        </com.google.android.material.card.MaterialCardView>
+                    </FrameLayout>
+                </LinearLayout>
+
+                <!-- POURQUOI -->
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="24dp"
+                    android:paddingBottom="16dp"
+                    android:text="Pourquoi donner son sang ?"
+                    android:textSize="24sp" />
+
+                <LinearLayout
+                    android:id="@+id/llPourquoi"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp" />
+
+                <!-- CHIFFRES -->
+                <LinearLayout
+                    android:id="@+id/llChiffres"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="24dp" />
+
+                <!-- PRÉSENTATION -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp"
+                    android:paddingTop="24dp">
+
+                    <TextView
+                        style="@style/Etiquette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="TUNISIA SMART BLOOD" />
+
+                    <TextView
+                        style="@style/Titre"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center"
+                        android:text="Une façon plus simple d'organiser le don de sang" />
+
+                    <TextView
+                        style="@style/Gris"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="24dp"
+                        android:gravity="center"
+                        android:text="Une plateforme web et mobile qui met en relation les donneurs, les centres de collecte, les établissements de santé et les associations." />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/llPresentation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp" />
+
+                <!-- COMMENT ÇA MARCHE -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp"
+                    android:paddingTop="32dp">
+
+                    <TextView
+                        style="@style/Etiquette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="COMMENT ÇA MARCHE" />
+
+                    <TextView
+                        style="@style/Titre"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="24dp"
+                        android:gravity="center"
+                        android:text="Trois étapes pour organiser un don" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/llEtapes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp" />
+
+                <!-- CONFIANCE -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp"
+                    android:paddingTop="32dp">
+
+                    <TextView
+                        style="@style/Etiquette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="NOS ENGAGEMENTS" />
+
+                    <TextView
+                        style="@style/Titre"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="24dp"
+                        android:gravity="center"
+                        android:text="Pensée pour la confiance, la sécurité et la générosité" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/llConfiance"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="24dp" />
+
+                <!-- APPEL À L'ACTION -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="24dp"
+                    android:background="@drawable/bg_appel"
+                    android:orientation="vertical"
+                    android:padding="28dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="serif"
+                        android:text="Prêt à sauver des vies ?"
+                        android:textColor="@color/white"
+                        android:textSize="26sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Rejoignez la communauté des donneurs de sang en Tunisie."
+                        android:textColor="#ECD3D9" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCreerCompte"
+                        style="@style/BoutonBlanc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="Créer un compte" />
+                </LinearLayout>
+
+                <!-- FOOTER -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/bordeaux"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="serif"
+                        android:text="Tunisia Smart Blood"
+                        android:textColor="@color/white"
+                        android:textSize="20sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="La plateforme qui connecte les donneurs de sang, les centres de collecte et les établissements de santé en Tunisie pour sauver des vies ensemble."
+                        android:textColor="#CCCCCC"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="2026 Tunisia Smart Blood. Tous droits réservés."
+                        android:textColor="#CCCCCC"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ================= CONNEXION ================= -->
+        <ScrollView
+            android:id="@+id/viewConnexion"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="BON RETOUR" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="28dp"
+                    android:gravity="center"
+                    android:text="Connexion" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Email" />
+
+                <EditText
+                    android:id="@+id/etEmailLogin"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:hint="votre@email.com"
+                    android:inputType="textEmailAddress" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Mot de passe" />
+
+                <EditText
+                    android:id="@+id/etPasswordLogin"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:hint="••••••••"
+                    android:inputType="textPassword" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSeConnecter"
+                    style="@style/BoutonRouge"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Se connecter" />
+
+                <TextView
+                    android:id="@+id/tvMessageLogin"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:textColor="@color/rouge"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="24dp"
+                    android:background="@color/bordure" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Vous n'avez pas de compte ?" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSInscrire"
+                    style="@style/BoutonContour"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="S'inscrire" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ================= CHOIX DU PROFIL ================= -->
+        <ScrollView
+            android:id="@+id/viewChoix"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="CRÉER UN COMPTE" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="Comment souhaitez-vous contribuer ?" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:text="Sélectionnez le profil qui correspond à votre rôle dans la plateforme." />
+
+                <LinearLayout
+                    android:id="@+id/llProfils"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Gris"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Vous avez déjà un compte ? " />
+
+                    <TextView
+                        android:id="@+id/btnDejaCompte"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="6dp"
+                        android:text="Se connecter"
+                        android:textColor="@color/bordeaux"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ================= INSCRIPTION ================= -->
+        <ScrollView
+            android:id="@+id/viewInscription"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRetour"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:text="← Changer de profil"
+                    android:textAllCaps="false"
+                    android:textColor="@color/texte"
+                    app:cornerRadius="50dp"
+                    app:strokeColor="@color/bordure" />
+
+                <TextView
+                    android:id="@+id/tvRole"
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="28dp"
+                    android:gravity="center"
+                    android:text="Inscription" />
+
+                <!-- Champs donneur -->
+                <LinearLayout
+                    android:id="@+id/llDonneur"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Nom" />
+
+                    <EditText
+                        android:id="@+id/etNomDonneur"
+                        style="@style/Champ"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:hint="Votre nom"
+                        android:inputType="textPersonName" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Prénom" />
+
+                    <EditText
+                        android:id="@+id/etPrenom"
+                        style="@style/Champ"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:hint="Votre prénom"
+                        android:inputType="textPersonName" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Date de naissance" />
+
+                    <EditText
+                        android:id="@+id/etDate"
+                        style="@style/Champ"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:cursorVisible="false"
+                        android:focusable="false"
+                        android:hint="jj/mm/aaaa"
+                        android:inputType="none" />
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Groupe sanguin" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:background="@drawable/bg_champ">
+
+                        <Spinner
+                            android:id="@+id/spGroupe"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp" />
+                    </FrameLayout>
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Gouvernorat" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:background="@drawable/bg_champ">
+
+                        <Spinner
+                            android:id="@+id/spGouvernorat"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp" />
+                    </FrameLayout>
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Téléphone" />
+
+                    <EditText
+                        android:id="@+id/etTel"
+                        style="@style/Champ"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:hint="+216 XX XXX XXX"
+                        android:inputType="phone" />
+                </LinearLayout>
+
+                <!-- Champ établissement / centre -->
+                <LinearLayout
+                    android:id="@+id/llEtab"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tvLabelNom"
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp" />
+
+                    <EditText
+                        android:id="@+id/etNomEtab"
+                        style="@style/Champ"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="20dp"
+                        android:inputType="text" />
+                </LinearLayout>
+
+                <!-- Champs communs -->
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Email" />
+
+                <EditText
+                    android:id="@+id/etEmailInsc"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:inputType="textEmailAddress" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Mot de passe" />
+
+                <EditText
+                    android:id="@+id/etPasswordInsc"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:hint="••••••••"
+                    android:inputType="textPassword" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnInscrire"
+                    style="@style/BoutonRouge"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="S'inscrire" />
+
+                <TextView
+                    android:id="@+id/tvMessageInsc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:textColor="@color/rouge"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="24dp"
+                    android:background="@color/bordure" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Vous avez déjà un compte ?" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAllerConnexion"
+                    style="@style/BoutonContour"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Se connecter" />
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
+</LinearLayout>

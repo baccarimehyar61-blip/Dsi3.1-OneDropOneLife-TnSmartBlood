@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="rouge">#C4122F</color>
+    <color name="bordeaux">#641F35</color>
+    <color name="creme">#FAF6F0</color>
+    <color name="texte">#351B25</color>
+    <color name="gris">#65575B</color>
+    <color name="bordure">#EADFD8</color>
+    <color name="rose">#FDE8EA</color>
+    <color name="white">#FFFFFF</color>
+</resources>
