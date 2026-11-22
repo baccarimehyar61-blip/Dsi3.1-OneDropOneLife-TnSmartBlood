@@ -6,7 +6,7 @@
     android:background="@color/creme"
     android:orientation="vertical">
 
-    <!-- NAVBAR -->
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -63,12 +63,104 @@
         android:layout_height="1dp"
         android:background="@color/bordure" />
 
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
+
+            <TextView
+                android:id="@+id/tabAccueil"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="Accueil"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tabContact"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="contact"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tabAnnonces"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="annonces"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tabApropos"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="À propos"
+                android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tabAdmin"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="Administration"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tabEspace"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingHorizontal="14dp"
+                android:text="Mon espace"
+                android:textSize="14sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/bordure" />
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <!-- ================= ACCUEIL ================= -->
+
         <ScrollView
             android:id="@+id/viewAccueil"
             android:layout_width="match_parent"
@@ -79,7 +171,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- HERO -->
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -205,7 +297,7 @@
                     </FrameLayout>
                 </LinearLayout>
 
-                <!-- POURQUOI -->
+
                 <TextView
                     style="@style/Titre"
                     android:layout_width="match_parent"
@@ -222,7 +314,7 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="24dp" />
 
-                <!-- CHIFFRES -->
+
                 <LinearLayout
                     android:id="@+id/llChiffres"
                     android:layout_width="match_parent"
@@ -232,7 +324,7 @@
                     android:paddingHorizontal="24dp"
                     android:paddingVertical="24dp" />
 
-                <!-- PRÉSENTATION -->
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -272,7 +364,6 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="24dp" />
 
-                <!-- COMMENT ÇA MARCHE -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -304,7 +395,19 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="24dp" />
 
-                <!-- CONFIANCE -->
+
+                <TextView
+                    android:id="@+id/tvVoirCampagnes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:padding="16dp"
+                    android:text="Voir les prochaines campagnes →"
+                    android:textColor="@color/bordeaux"
+                    android:textSize="14.5sp"
+                    android:textStyle="bold" />
+
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -336,7 +439,7 @@
                     android:orientation="vertical"
                     android:paddingHorizontal="24dp" />
 
-                <!-- APPEL À L'ACTION -->
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -393,6 +496,46 @@
                         android:textColor="#CCCCCC"
                         android:textSize="14sp" />
 
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/footAccueil"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="6dp"
+                            android:text="Accueil"
+                            android:textColor="#CCCCCC" />
+
+                        <TextView
+                            android:id="@+id/footContact"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="6dp"
+                            android:text="contact"
+                            android:textColor="#CCCCCC" />
+
+                        <TextView
+                            android:id="@+id/footAnnonces"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="6dp"
+                            android:text="annonces"
+                            android:textColor="#CCCCCC" />
+
+                        <TextView
+                            android:id="@+id/footApropos"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="6dp"
+                            android:text="À propos"
+                            android:textColor="#CCCCCC" />
+                    </LinearLayout>
+
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -404,7 +547,7 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- ================= CONNEXION ================= -->
+
         <ScrollView
             android:id="@+id/viewConnexion"
             android:layout_width="match_parent"
@@ -432,6 +575,66 @@
                     android:layout_marginBottom="28dp"
                     android:gravity="center"
                     android:text="Connexion" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnModeUser"
+                        style="@style/BoutonRouge"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:text="Utilisateur" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnModeAdmin"
+                        style="@style/BoutonContour"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Administrateur" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvInfoAdmin"
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:gravity="center"
+                    android:text="Espace réservé à l'administrateur de la plateforme."
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/llProfilConnexion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="Profil" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_champ">
+
+                        <Spinner
+                            android:id="@+id/spProfilConnexion"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp" />
+                    </FrameLayout>
+                </LinearLayout>
 
                 <TextView
                     style="@style/Label"
@@ -504,7 +707,7 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- ================= CHOIX DU PROFIL ================= -->
+
         <ScrollView
             android:id="@+id/viewChoix"
             android:layout_width="match_parent"
@@ -572,7 +775,6 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- ================= INSCRIPTION ================= -->
         <ScrollView
             android:id="@+id/viewInscription"
             android:layout_width="match_parent"
@@ -613,7 +815,7 @@
                     android:gravity="center"
                     android:text="Inscription" />
 
-                <!-- Champs donneur -->
+
                 <LinearLayout
                     android:id="@+id/llDonneur"
                     android:layout_width="match_parent"
@@ -727,7 +929,6 @@
                         android:inputType="phone" />
                 </LinearLayout>
 
-                <!-- Champ établissement / centre -->
                 <LinearLayout
                     android:id="@+id/llEtab"
                     android:layout_width="match_parent"
@@ -751,7 +952,7 @@
                         android:inputType="text" />
                 </LinearLayout>
 
-                <!-- Champs communs -->
+
                 <TextView
                     style="@style/Label"
                     android:layout_width="wrap_content"
@@ -821,5 +1022,413 @@
                     android:text="Se connecter" />
             </LinearLayout>
         </ScrollView>
+
+
+        <ScrollView
+            android:id="@+id/viewCampagnes"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="CAMPAGNES" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="Les prochaines campagnes de don de sang" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:text="Trouvez une collecte près de chez vous et réservez votre créneau." />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Gouvernorat" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:background="@drawable/bg_champ">
+
+                    <Spinner
+                        android:id="@+id/spFiltreGouvCamp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/llCampagnes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/tvVideCampagnes"
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Aucune campagne dans ce gouvernorat pour le moment."
+                    android:visibility="gone" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:text="Les campagnes affichées sont des exemples fictifs."
+                    android:textSize="13sp"
+                    android:textStyle="italic" />
+            </LinearLayout>
+        </ScrollView>
+
+
+        <ScrollView
+            android:id="@+id/viewAnnonces"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="ANNONCES" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="Besoins en sang" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:text="Les établissements de santé et les centres publient ici leurs besoins." />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Groupe sanguin" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/bg_champ">
+
+                    <Spinner
+                        android:id="@+id/spFiltreGroupe"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp" />
+                </FrameLayout>
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Gouvernorat" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:background="@drawable/bg_champ">
+
+                    <Spinner
+                        android:id="@+id/spFiltreGouvAnn"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/llAnnonces"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/tvVideAnnonces"
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="Aucune annonce ne correspond à votre recherche."
+                    android:visibility="gone" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:text="Les annonces affichées sont des exemples fictifs."
+                    android:textSize="13sp"
+                    android:textStyle="italic" />
+            </LinearLayout>
+        </ScrollView>
+
+
+        <ScrollView
+            android:id="@+id/viewApropos"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="À PROPOS" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="Tunisia Smart Blood" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:text="Une plateforme web et mobile qui met en relation les donneurs, les centres de collecte, les établissements de santé et les associations." />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="serif"
+                    android:gravity="center"
+                    android:text="Notre mission"
+                    android:textColor="@color/texte"
+                    android:textSize="22sp" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:text="Faciliter le don de sang en Tunisie en regroupant au même endroit les campagnes, les besoins urgents et la prise de rendez-vous, afin que chaque don arrive là où il est nécessaire." />
+
+                <LinearLayout
+                    android:id="@+id/llApropos"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRejoindre"
+                    style="@style/BoutonRouge"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Rejoindre la communauté" />
+            </LinearLayout>
+        </ScrollView>
+
+
+        <ScrollView
+            android:id="@+id/viewContact"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <TextView
+                    style="@style/Etiquette"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="CONTACT" />
+
+                <TextView
+                    style="@style/Titre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text="Contactez-nous" />
+
+                <TextView
+                    style="@style/Gris"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:gravity="center"
+                    android:text="Une question, une suggestion ? Écrivez-nous, nous vous répondrons rapidement." />
+
+                <LinearLayout
+                    android:id="@+id/llContactInfos"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:orientation="vertical" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Nom complet" />
+
+                <EditText
+                    android:id="@+id/etNomContact"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:hint="Votre nom"
+                    android:inputType="textPersonName" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Email" />
+
+                <EditText
+                    android:id="@+id/etEmailContact"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:hint="votre@email.com"
+                    android:inputType="textEmailAddress" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Sujet" />
+
+                <EditText
+                    android:id="@+id/etSujet"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:hint="Sujet de votre message"
+                    android:inputType="text" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Message" />
+
+                <EditText
+                    android:id="@+id/etMessageContact"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
+                    android:gravity="top"
+                    android:hint="Écrivez votre message ici..."
+                    android:inputType="textMultiLine"
+                    android:minLines="5" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnEnvoyer"
+                    style="@style/BoutonRouge"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Envoyer" />
+
+                <TextView
+                    android:id="@+id/tvMessageContact"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center"
+                    android:textColor="@color/rouge"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </ScrollView>
+
+        <include
+            android:id="@+id/viewAdmin"
+            layout="@layout/view_espace"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/viewEspaceCentre"
+            layout="@layout/view_espace"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/viewEspaceEtab"
+            layout="@layout/view_espace"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
     </FrameLayout>
 </LinearLayout>
