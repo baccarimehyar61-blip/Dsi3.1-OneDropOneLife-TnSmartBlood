@@ -33,6 +33,7 @@ import isetb.projet.tunisiasmartblood.databinding.ItemCampagneBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemCarteBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemGestionBinding
 import isetb.projet.tunisiasmartblood.databinding.ViewEspaceBinding
+import isetb.projet.tunisiasmartblood.databinding.ItemRdvBinding
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -46,11 +47,12 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var b: ActivityMainBinding
 
+    // Handler unique, annulé dans onDestroy (évite un crash après fermeture)
+    private val handler = Handler(Looper.getMainLooper())
 
     private var filtreGouvCamp = ""
     private var filtreGroupe = ""
     private var filtreGouvAnn = ""
-
 
     private var modeAdmin = false
     private var roleInscription = "donneur"
@@ -59,6 +61,10 @@ class MainActivity : AppCompatActivity() {
     private var ongletCentre = "rendezvous"
     private var ongletEtab = "besoins"
     private var retourAdmin = ""
+    private var msgDonneur = ""
+    private var erreurDonneur = ""
+    private var rdvChoisi: Calendar? = null
+    private var centresDispo = listOf<Centre>()
     private var retourEspace = ""
     private val rolesConnexion = listOf("donneur", "etablissement", "centre")
 
@@ -132,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         remplirSpinner(b.spGroupe, "Sélectionnez votre groupe", groupesSanguins)
         remplirSpinner(b.spGouvernorat, "Sélectionnez votre gouvernorat", gouvernorats)
 
-        // NOUVEAU : profil choisi dans le formulaire de connexion
+        // Profil choisi dans le formulaire de connexion
         b.spProfilConnexion.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_dropdown_item,
             listOf("Donneur", "Établissement de santé", "Centre de collecte")
@@ -185,6 +191,9 @@ class MainActivity : AppCompatActivity() {
         b.btnRejoindre.setOnClickListener { afficher(b.viewChoix) }
         b.btnEnvoyer.setOnClickListener { envoyerContact() }
 
+        // CORRECTION 1 : l'espace donneur est configuré une seule fois, dès le démarrage
+        configurerDonneur()
+
         b.btnModeUser.setOnClickListener { choisirMode(false) }
         b.btnModeAdmin.setOnClickListener { choisirMode(true) }
         b.btnSeConnecter.setOnClickListener { seConnecter() }
@@ -195,12 +204,19 @@ class MainActivity : AppCompatActivity() {
         majOnglets(b.viewAccueil)
     }
 
+    // CORRECTION 5 : on annule les actions différées à la fermeture de l'activité
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
 
+    // ----- Navigation -----
     private fun afficher(vue: View) {
         listOf(
             b.viewAccueil, b.viewConnexion, b.viewChoix, b.viewInscription,
             b.viewCampagnes, b.viewAnnonces, b.viewApropos, b.viewContact,
-            b.viewAdmin.root, b.viewEspaceCentre.root, b.viewEspaceEtab.root
+            b.viewAdmin.root, b.viewEspaceCentre.root, b.viewEspaceEtab.root,
+            b.viewEspaceDonneur.root
         ).forEach {
             it.visibility = if (it == vue) View.VISIBLE else View.GONE
         }
@@ -218,7 +234,7 @@ class MainActivity : AppCompatActivity() {
             b.tabAnnonces to listOf<View>(b.viewAnnonces),
             b.tabApropos to listOf<View>(b.viewApropos),
             b.tabAdmin to listOf<View>(b.viewAdmin.root),
-            b.tabEspace to listOf<View>(b.viewEspaceCentre.root, b.viewEspaceEtab.root)
+            b.tabEspace to listOf<View>(b.viewEspaceCentre.root, b.viewEspaceEtab.root, b.viewEspaceDonneur.root)
         )
         onglets.forEach { (onglet, vues) ->
             val actif = vue in vues
@@ -227,7 +243,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    // ----- Session -----
     private fun majSession() {
         val connecte = adminConnecte || compteConnecte != null
         b.btnTopConnexion.text = if (connecte) "Déconnexion" else "Se connecter"
@@ -235,9 +251,17 @@ class MainActivity : AppCompatActivity() {
         b.tabEspace.visibility = if (compteConnecte != null) View.VISIBLE else View.GONE
     }
 
+    // CORRECTION 4 : réinitialisation complète de l'état du donneur
     private fun deconnexion() {
+        handler.removeCallbacksAndMessages(null)
         adminConnecte = false
         compteConnecte = null
+        rdvChoisi = null
+        msgDonneur = ""
+        erreurDonneur = ""
+        retourEspace = ""
+        retourAdmin = ""
+        b.viewEspaceDonneur.etDateRdv.text.clear()
         majSession()
         afficher(b.viewAccueil)
     }
@@ -262,7 +286,7 @@ class MainActivity : AppCompatActivity() {
         afficher(b.viewInscription)
     }
 
-
+    // ----- Campagnes et annonces publiques -----
     private fun allerCampagnes() {
         b.spFiltreGouvCamp.setSelection(0)
         filtreGouvCamp = ""
@@ -330,6 +354,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ----- Connexion / inscription -----
     private fun choisirMode(admin: Boolean) {
         modeAdmin = admin
         b.llProfilConnexion.visibility = if (admin) View.GONE else View.VISIBLE
@@ -346,6 +371,7 @@ class MainActivity : AppCompatActivity() {
         btn.strokeColor = ColorStateList.valueOf(getColor(R.color.rouge))
     }
 
+    // CORRECTION 2 : bloc dupliqué supprimé
     private fun seConnecter() {
         if (!(requis(b.etEmailLogin, b.etPasswordLogin) && emailValide(b.etEmailLogin))) return
         val email = b.etEmailLogin.text.toString().trim()
@@ -365,42 +391,55 @@ class MainActivity : AppCompatActivity() {
 
         b.tvMessageLogin.text = "Connexion réussie !"
         val role = rolesConnexion[b.spProfilConnexion.selectedItemPosition]
-        if (role != "donneur") {
-            // Démonstration : on reprend un centre / établissement qui possède déjà des données
-            val nom = if (role == "centre") "Centre National de Transfusion Sanguine" else "Hôpital Charles Nicolle"
-            adminConnecte = false
-            compteConnecte = Compte(role, nom, email, "Tunis")
-            majSession()
-            ouvrirEspaceApres()
+        adminConnecte = false
+        compteConnecte = when (role) {
+            "donneur" -> Compte("donneur", "Ben Ali", email, "Tunis", "+216 20 123 456",
+                prenom = "Sara", groupe = "O+")
+            "centre" -> Compte(role, "Centre National de Transfusion Sanguine", email, "Tunis")
+            else -> Compte(role, "Hôpital Charles Nicolle", email, "Tunis")
         }
+        majSession()
+        ouvrirEspaceApres()
     }
 
+    // CORRECTION 3 : message d'erreur pour les listes déroulantes non choisies
     private fun sInscrire() {
+        b.tvMessageInsc.text = ""
         var ok = requis(b.etEmailInsc, b.etPasswordInsc)
         if (b.llDonneur.visibility == View.VISIBLE) {
             ok = requis(b.etNomDonneur, b.etPrenom, b.etDate, b.etTel) && ok
-            if (b.spGroupe.selectedItemPosition == 0 || b.spGouvernorat.selectedItemPosition == 0) ok = false
+            if (b.spGroupe.selectedItemPosition == 0 || b.spGouvernorat.selectedItemPosition == 0) {
+                ok = false
+                b.tvMessageInsc.text = "Veuillez sélectionner le groupe sanguin et le gouvernorat."
+            }
         } else {
             ok = requis(b.etNomEtab) && ok
         }
         if (ok && emailValide(b.etEmailInsc)) {
             b.tvMessageInsc.text = "Compte créé avec succès !"
-            if (roleInscription != "donneur") {
-                adminConnecte = false
-                compteConnecte = Compte(
-                    roleInscription,
-                    b.etNomEtab.text.toString().trim(),
-                    b.etEmailInsc.text.toString().trim()
-                )
-                majSession()
-                ouvrirEspaceApres()
+            val email = b.etEmailInsc.texte()
+            adminConnecte = false
+            if (roleInscription == "donneur") {
+                val nom = b.etNomDonneur.texte()
+                val prenom = b.etPrenom.texte()
+                val groupe = b.spGroupe.selectedItem.toString()
+                val gouv = b.spGouvernorat.selectedItem.toString()
+                compteConnecte = Compte("donneur", nom, email, gouv, b.etTel.texte(),
+                    prenom = prenom, groupe = groupe)
+                donneurs.add(Donneur(nouvelId(), "$nom $prenom", groupe, gouv, "Actif")) // visible côté admin
+                rdvDonneur.clear() // un nouveau donneur n'a encore aucun rendez-vous
+            } else {
+                compteConnecte = Compte(roleInscription, b.etNomEtab.texte(), email)
             }
+            majSession()
+            ouvrirEspaceApres()
         }
     }
 
-
+    // CORRECTION 5 : utilise le handler unique
     private fun ouvrirEspaceApres() {
-        Handler(Looper.getMainLooper()).postDelayed({
+        handler.removeCallbacksAndMessages(null)
+        handler.postDelayed({
             if (compteConnecte != null &&
                 (b.viewConnexion.visibility == View.VISIBLE || b.viewInscription.visibility == View.VISIBLE)
             ) allerEspace()
@@ -415,7 +454,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
+    // ----- Espace administrateur -----
     private fun allerAdmin() {
         if (!adminConnecte) return
         ongletAdmin = "comptes"
@@ -539,7 +578,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private fun genererRapport() {
         val date = SimpleDateFormat("dd/MM/yyyy", Locale.FRANCE).format(Date())
         val texte = buildString {
@@ -565,26 +603,39 @@ class MainActivity : AppCompatActivity() {
         rendreAdmin()
     }
 
-
+    // ----- Espaces connectés -----
     private fun allerEspace() {
         val cpt = compteConnecte ?: return
         retourEspace = ""
-        if (cpt.role == "centre") {
-            ongletCentre = "rendezvous"
-            rendreCentre()
-            afficher(b.viewEspaceCentre.root)
-        } else {
-            ongletEtab = "besoins"
-            rendreEtab()
-            afficher(b.viewEspaceEtab.root)
+        when (cpt.role) {
+            "donneur" -> {
+                msgDonneur = ""
+                erreurDonneur = ""
+                rendreDonneur()
+                afficher(b.viewEspaceDonneur.root)
+            }
+            "centre" -> {
+                ongletCentre = "rendezvous"
+                rendreCentre()
+                afficher(b.viewEspaceCentre.root)
+            }
+            else -> {
+                ongletEtab = "besoins"
+                rendreEtab()
+                afficher(b.viewEspaceEtab.root)
+            }
         }
     }
 
     private fun rafraichirEspace() {
-        if (compteConnecte?.role == "centre") rendreCentre() else rendreEtab()
+        when (compteConnecte?.role) {
+            "centre" -> rendreCentre()
+            "donneur" -> rendreDonneur()
+            else -> rendreEtab()
+        }
     }
 
-
+    // ----- Espace centre de collecte -----
     private fun rendreCentre() {
         val v = b.viewEspaceCentre
         val cpt = compteConnecte ?: return
@@ -610,7 +661,7 @@ class MainActivity : AppCompatActivity() {
         when (ongletCentre) {
             "rendezvous" -> {
                 if (rendezVous.isEmpty()) vide(l, "Aucun rendez-vous pour le moment.")
-                rendezVous.forEach { x ->
+                rendezVous.toList().forEach { x ->
                     val a: Pair<String, () -> Unit>? = when (x.statut) {
                         "En attente" -> "Confirmer" to { changerStatut(x.id, "Confirmé") }
                         "Confirmé" -> "Enregistrer la participation" to { changerStatut(x.id, "Participation enregistrée") }
@@ -853,7 +904,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-
+    // ----- Utilitaires d'interface -----
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private fun lp(top: Int = 0, bottom: Int = 0) =
@@ -1029,7 +1080,6 @@ class MainActivity : AppCompatActivity() {
         setOnClickListener { action() }
     }
 
-
     private fun requis(vararg champs: EditText): Boolean {
         var ok = true
         champs.forEach {
@@ -1070,5 +1120,149 @@ class MainActivity : AppCompatActivity() {
         c.tvTexte.text = texte
         c.root.setOnClickListener { choisirProfil(role) }
         b.llProfils.addView(c.root)
+    }
+
+    // ----- Espace donneur -----
+    private fun fmt(motif: String, ms: Long) =
+        SimpleDateFormat(motif, Locale.FRANCE).format(Date(ms))
+
+    private fun libelleStatut(s: String) = when (s) {
+        "PLANIFIE" -> "Planifié"
+        "EFFECTUE" -> "Effectué"
+        else -> "Annulé"
+    }
+
+    private fun couleursStatut(s: String) = when (s) {
+        "PLANIFIE" -> R.color.statut_planifie_fond to R.color.statut_planifie_texte
+        "EFFECTUE" -> R.color.statut_effectue_fond to R.color.statut_effectue_texte
+        else -> R.color.statut_annule_fond to R.color.statut_annule_texte
+    }
+
+    private fun configurerDonneur() {
+        val v = b.viewEspaceDonneur
+        v.btnSortir.setOnClickListener { deconnexion() }
+        v.btnReserver.setOnClickListener { reserverRdv() }
+        v.etDateRdv.setOnClickListener { choisirDateHeure(v.etDateRdv) }
+    }
+
+    // Android n'a pas de "datetime-local" : on enchaîne deux dialogues
+    private fun choisirDateHeure(champ: EditText) {
+        val now = Calendar.getInstance()
+        val dialogue = DatePickerDialog(this, { _, y, m, d ->
+            TimePickerDialog(this, { _, h, min ->
+                val c = Calendar.getInstance().apply {
+                    set(y, m, d, h, min, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                rdvChoisi = c
+                champ.setText(fmt("dd/MM/yyyy HH:mm", c.timeInMillis))
+            }, 9, 30, true).show()
+        }, now[Calendar.YEAR], now[Calendar.MONTH], now[Calendar.DAY_OF_MONTH])
+        dialogue.datePicker.minDate = System.currentTimeMillis() - 1000 // équivalent de [min]="minDate"
+        dialogue.show()
+    }
+
+    private fun rendreDonneur() {
+        val v = b.viewEspaceDonneur
+        val cpt = compteConnecte ?: return
+        val maintenant = System.currentTimeMillis()
+
+        // En-tête
+        val prenom = cpt.prenom ?: ""
+        v.tvInitiales.text = (prenom.take(1) + cpt.nom.take(1)).uppercase()
+        v.tvNomDonneur.text = "$prenom ${cpt.nom}".trim()
+        v.tvContact.text = listOfNotNull(cpt.gouvernorat, cpt.telephone)
+            .filter { it.isNotBlank() }.joinToString(" · ")
+        v.llGroupe.visibility = if (cpt.groupe.isNullOrEmpty()) View.GONE else View.VISIBLE
+        v.tvGroupeDonneur.text = cpt.groupe ?: ""
+
+        // Statistiques
+        val effectues = rdvDonneur.filter { it.statut == "EFFECTUE" }
+        val planifies = rdvDonneur.filter { it.statut == "PLANIFIE" }
+        v.tvNbEffectues.text = "${effectues.size}"
+        v.tvNbPlanifies.text = "${planifies.size}"
+        val dernier = effectues.maxOfOrNull { it.dateHeure }
+        v.tvDernierDon.text = if (dernier != null) fmt("dd/MM/yyyy", dernier) else "—"
+
+        // Prochain rendez-vous : le plus proche parmi les planifiés à venir
+        val prochain = planifies.filter { it.dateHeure >= maintenant }.minByOrNull { it.dateHeure }
+        v.llProchain.visibility = if (prochain != null) View.VISIBLE else View.GONE
+        v.tvVideProchain.visibility = if (prochain == null) View.VISIBLE else View.GONE
+        if (prochain != null) {
+            v.tvProchainJour.text = fmt("dd", prochain.dateHeure)
+            v.tvProchainMois.text = fmt("MM/yyyy", prochain.dateHeure)
+            v.tvProchainCentre.text = prochain.centreNom
+            v.tvProchainHeure.text = "à " + fmt("HH:mm", prochain.dateHeure)
+            v.btnProchainAnnuler.setOnClickListener { annulerRdv(prochain.id) }
+        }
+
+        // Historique (du plus récent au plus ancien)
+        v.llHistorique.removeAllViews()
+        val tous = rdvDonneur.sortedByDescending { it.dateHeure }
+        v.tvVideHistorique.visibility = if (tous.isEmpty()) View.VISIBLE else View.GONE
+        tous.forEach { r ->
+            val c = ItemRdvBinding.inflate(layoutInflater, v.llHistorique, false)
+            val (fond, texte) = couleursStatut(r.statut)
+            c.tvCentre.text = r.centreNom
+            c.tvDate.text = fmt("dd/MM/yyyy HH:mm", r.dateHeure)
+            c.tvStatut.text = libelleStatut(r.statut)
+            c.tvStatut.backgroundTintList = ColorStateList.valueOf(getColor(fond))
+            c.tvStatut.setTextColor(getColor(texte))
+            c.btnAnnuler.visibility = if (r.statut == "PLANIFIE") View.VISIBLE else View.GONE
+            c.btnAnnuler.setOnClickListener { annulerRdv(r.id) }
+            v.llHistorique.addView(c.root)
+        }
+
+        // Messages
+        v.tvMessageDonneur.text = msgDonneur
+        v.tvMessageDonneur.visibility = if (msgDonneur.isEmpty()) View.GONE else View.VISIBLE
+        v.tvErreurDonneur.text = erreurDonneur
+        v.tvErreurDonneur.visibility = if (erreurDonneur.isEmpty()) View.GONE else View.VISIBLE
+
+        // Liste des centres (on garde le choix en cours)
+        centresDispo = centres.filter { it.statut == "Actif" }
+        val choix = v.spCentre.selectedItemPosition
+        v.spCentre.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item,
+            centresDispo.map { "${it.nom} (${it.gouvernorat})" }
+        )
+        if (choix in centresDispo.indices) v.spCentre.setSelection(choix)
+    }
+
+    private fun annulerRdv(id: Int) {
+        val r = rdvDonneur.find { it.id == id } ?: return
+        r.statut = "ANNULE"
+        // le centre voit aussi l'annulation
+        rendezVous.find { it.id == r.idRdvCentre }?.statut = "Annulé"
+        msgDonneur = "Rendez-vous annulé."
+        erreurDonneur = ""
+        rendreDonneur()
+    }
+
+    private fun reserverRdv() {
+        msgDonneur = ""
+        erreurDonneur = ""
+        val cpt = compteConnecte ?: return
+        val centre = centresDispo.getOrNull(b.viewEspaceDonneur.spCentre.selectedItemPosition)
+        val date = rdvChoisi
+        when {
+            centre == null -> erreurDonneur = "Aucun centre disponible."
+            date == null -> erreurDonneur = "Veuillez choisir la date et l'heure."
+            date.timeInMillis < System.currentTimeMillis() -> erreurDonneur = "La date doit être dans le futur."
+            else -> {
+                val ms = date.timeInMillis
+                val idCentre = nouvelId()
+                // Le centre reçoit la demande "En attente" dans son espace
+                rendezVous.add(RendezVous(
+                    idCentre, "${cpt.prenom ?: ""} ${cpt.nom}".trim(), cpt.groupe ?: "",
+                    fmt("d MMMM yyyy · HH'h'mm", ms), "En attente"
+                ))
+                rdvDonneur.add(RdvDonneur(nouvelId(), centre.nom, ms, "PLANIFIE", idCentre))
+                msgDonneur = "Rendez-vous réservé. Le centre le confirmera."
+                rdvChoisi = null
+                b.viewEspaceDonneur.etDateRdv.text.clear()
+            }
+        }
+        rendreDonneur()
     }
 }
