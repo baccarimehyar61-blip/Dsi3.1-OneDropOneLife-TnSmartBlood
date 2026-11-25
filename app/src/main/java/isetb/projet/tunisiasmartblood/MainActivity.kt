@@ -38,7 +38,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 private const val TYPE_EMAIL = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
 
     private var modeAdmin = false
     private var roleInscription = "donneur"
+    private var jeton: String? = null
 
     private var ongletAdmin = "comptes"
     private var ongletCentre = "rendezvous"
@@ -377,6 +379,7 @@ class MainActivity : AppCompatActivity() {
         val email = b.etEmailLogin.text.toString().trim()
         val mdp = b.etPasswordLogin.text.toString()
 
+        // Mode administrateur : inchangé (identifiants locaux)
         if (modeAdmin) {
             if (email.lowercase() == ADMIN_EMAIL && mdp == ADMIN_MDP) {
                 adminConnecte = true
@@ -389,17 +392,35 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        b.tvMessageLogin.text = "Connexion réussie !"
-        val role = rolesConnexion[b.spProfilConnexion.selectedItemPosition]
-        adminConnecte = false
-        compteConnecte = when (role) {
-            "donneur" -> Compte("donneur", "Ben Ali", email, "Tunis", "+216 20 123 456",
-                prenom = "Sara", groupe = "O+")
-            "centre" -> Compte(role, "Centre National de Transfusion Sanguine", email, "Tunis")
-            else -> Compte(role, "Hôpital Charles Nicolle", email, "Tunis")
+        b.tvMessageLogin.text = "Connexion en cours..."
+        lifecycleScope.launch {
+            try {
+                val res = RetrofitClient.api.login(LoginRequest(email, mdp))
+                val auth = res.body()
+                if (res.isSuccessful && auth != null) {
+                    jeton = auth.token
+                    adminConnecte = false
+
+                    val r = auth.role.lowercase()
+                    val role = when {
+                        r.contains("donneur") -> "donneur"
+                        r.contains("centre") -> "centre"
+                        else -> rolesConnexion[b.spProfilConnexion.selectedItemPosition]
+                    }
+                    compteConnecte = Compte(role, auth.nom, auth.email)
+
+                    b.tvMessageLogin.text = "Connexion réussie !"
+                    majSession()
+                    ouvrirEspaceApres()
+                } else if (res.code() == 400 || res.code() == 401 || res.code() == 403) {
+                    b.tvMessageLogin.text = "E-mail ou mot de passe incorrect."
+                } else {
+                    b.tvMessageLogin.text = "Erreur du serveur (${res.code()})."
+                }
+            } catch (e: Exception) {
+                b.tvMessageLogin.text = "Serveur injoignable. Vérifiez que le backend est lancé."
+            }
         }
-        majSession()
-        ouvrirEspaceApres()
     }
 
     // CORRECTION 3 : message d'erreur pour les listes déroulantes non choisies
@@ -415,26 +436,66 @@ class MainActivity : AppCompatActivity() {
         } else {
             ok = requis(b.etNomEtab) && ok
         }
-        if (ok && emailValide(b.etEmailInsc)) {
-            b.tvMessageInsc.text = "Compte créé avec succès !"
-            val email = b.etEmailInsc.texte()
-            adminConnecte = false
-            if (roleInscription == "donneur") {
-                val nom = b.etNomDonneur.texte()
-                val prenom = b.etPrenom.texte()
-                val groupe = b.spGroupe.selectedItem.toString()
-                val gouv = b.spGouvernorat.selectedItem.toString()
-                compteConnecte = Compte("donneur", nom, email, gouv, b.etTel.texte(),
-                    prenom = prenom, groupe = groupe)
-                donneurs.add(Donneur(nouvelId(), "$nom $prenom", groupe, gouv, "Actif")) // visible côté admin
-                rdvDonneur.clear() // un nouveau donneur n'a encore aucun rendez-vous
-            } else {
-                compteConnecte = Compte(roleInscription, b.etNomEtab.texte(), email)
+        if (!(ok && emailValide(b.etEmailInsc))) return
+
+        val email = b.etEmailInsc.texte()
+        val mdp = b.etPasswordInsc.text.toString()
+        val estDonneur = roleInscription == "donneur"
+
+        val demande = if (estDonneur) {
+            RegisterRequest(
+                nom = b.etNomDonneur.texte(),
+                email = email,
+                motDePasse = mdp,
+                prenom = b.etPrenom.texte(),
+                groupeSanguin = groupeVersApi(b.spGroupe.selectedItem.toString()),
+                ville = b.spGouvernorat.selectedItem.toString(),
+                telephone = b.etTel.texte().filter { it.isDigit() }.takeLast(8)
+            )
+        } else {
+            RegisterRequest(nom = b.etNomEtab.texte(), email = email, motDePasse = mdp)
+        }
+
+        b.tvMessageInsc.text = "Création du compte..."
+        lifecycleScope.launch {
+            try {
+                val res = RetrofitClient.api.register(demande)
+                val auth = res.body()
+                if (res.isSuccessful && auth != null) {
+                    jeton = auth.token
+                    adminConnecte = false
+                    b.tvMessageInsc.text = "Compte créé avec succès !"
+
+                    if (estDonneur) {
+                        val nom = b.etNomDonneur.texte()
+                        val prenom = b.etPrenom.texte()
+                        val groupe = b.spGroupe.selectedItem.toString()
+                        val gouv = b.spGouvernorat.selectedItem.toString()
+                        compteConnecte = Compte("donneur", nom, email, gouv, b.etTel.texte(),
+                            prenom = prenom, groupe = groupe)
+                        donneurs.add(Donneur(nouvelId(), "$nom $prenom", groupe, gouv, "Actif"))
+                        rdvDonneur.clear()
+                    } else {
+                        compteConnecte = Compte(roleInscription, b.etNomEtab.texte(), email)
+                    }
+                    majSession()
+                    ouvrirEspaceApres()
+                } else if (res.code() == 409) {
+                    b.tvMessageInsc.text = "Cet e-mail est déjà utilisé."
+                } else if (res.code() == 400) {
+                    b.tvMessageInsc.text = "Données invalides (mot de passe de 6 caractères minimum, téléphone de 8 chiffres)."
+                } else {
+                    b.tvMessageInsc.text = "Erreur du serveur (${res.code()})."
+                }
+            } catch (e: Exception) {
+                b.tvMessageInsc.text = "Serveur injoignable. Vérifiez que le backend est lancé."
             }
-            majSession()
-            ouvrirEspaceApres()
         }
     }
+
+    // Convertit « O+ » en valeur de l'enum du backend (À VÉRIFIER, voir plus bas)
+    private fun groupeVersApi(g: String): String =
+        g.replace("+", "_POSITIF").replace("-", "_NEGATIF")
 
     // CORRECTION 5 : utilise le handler unique
     private fun ouvrirEspaceApres() {

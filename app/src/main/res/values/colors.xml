@@ -8,4 +8,15 @@
     <color name="bordure">#EADFD8</color>
     <color name="rose">#FDE8EA</color>
     <color name="white">#FFFFFF</color>
+    <color name="statut_planifie_fond">#E3F2FD</color>
+    <color name="statut_planifie_texte">#0D47A1</color>
+    <color name="statut_effectue_fond">#E8F5E9</color>
+    <color name="statut_effectue_texte">#1B5E20</color>
+    <color name="statut_annule_fond">#FFEBEE</color>
+    <color name="statut_annule_texte">#C62828</color>
+    <color name="alerte_ko_fond">#FDF2F2</color>
+    <color name="alerte_ko_texte">#9B1C1C</color>
+    <color name="alerte_ok_fond">#F3FAF7</color>
+    <color name="alerte_ok_texte">#0E6251</color>
+    <color name="prochain_fond">#FDF2F4</color>
 </resources>

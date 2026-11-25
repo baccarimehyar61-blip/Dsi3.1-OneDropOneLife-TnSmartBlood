@@ -13,18 +13,22 @@ data class Annonce(
 
 data class Compte(
     val role: String, val nom: String, val email: String,
-    val gouvernorat: String? = null, val telephone: String? = null, val adresse: String? = null
+    val gouvernorat: String? = null, val telephone: String? = null, val adresse: String? = null,
+    val prenom: String? = null, val groupe: String? = null
 )
 data class CompteAttente(val id: Int, val nom: String, val type: String, val gouvernorat: String, val email: String)
 data class Donneur(val id: Int, val nom: String, val groupe: String, val gouvernorat: String, var statut: String)
 data class Centre(val id: Int, val nom: String, val type: String, val gouvernorat: String, var statut: String)
 data class Creneau(val id: Int, val date: String, val horaire: String, val places: Int, val reservees: Int)
 data class RendezVous(val id: Int, val donneur: String, val groupe: String, val creneau: String, var statut: String)
+data class RdvDonneur(val id: Int, val centreNom: String, val dateHeure: Long, var statut: String, val idRdvCentre: Int)
 
 // ----- Session (à remplacer plus tard par Spring Boot + JWT) -----
 const val ADMIN_EMAIL = "admin@tsb.tn"
 const val ADMIN_MDP = "Admin123!"
 var compteConnecte: Compte? = null
+var jeton: String? = null   // jeton JWT reçu du backend
+
 var adminConnecte = false
 
 private var compteurId = 1000
@@ -73,6 +77,8 @@ val rendezVous = mutableListOf(
     RendezVous(4, "Hamdi Ines", "A+", "12 décembre 2026 · 10h30", "Confirmé"),
     RendezVous(5, "Gharbi Walid", "B-", "12 décembre 2026 · 13h00", "Participation enregistrée")
 )
+
+val rdvDonneur = mutableListOf<RdvDonneur>()
 
 fun campagnesCentre() = campagnes.filter { it.organisateur == compteConnecte?.nom }
 fun mesAnnonces() = annonces.filter { it.etablissement == compteConnecte?.nom }
