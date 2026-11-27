@@ -96,7 +96,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingHorizontal="14dp"
-                android:text="contact"
+                android:text="Contact"
                 android:textSize="14sp" />
 
             <TextView
@@ -108,7 +108,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:paddingHorizontal="14dp"
-                android:text="annonces"
+                android:text="Annonces"
                 android:textSize="14sp" />
 
             <TextView
@@ -516,7 +516,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:paddingVertical="6dp"
-                            android:text="contact"
+                            android:text="Contact"
                             android:textColor="#CCCCCC" />
 
                         <TextView
@@ -524,7 +524,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:paddingVertical="6dp"
-                            android:text="annonces"
+                            android:text="Annonces"
                             android:textColor="#CCCCCC" />
 
                         <TextView
@@ -982,6 +982,21 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="20dp"
                     android:hint="••••••••"
+                    android:inputType="textPassword" />
+
+                <TextView
+                    style="@style/Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Confirmer le mot de passe" />
+
+                <EditText
+                    android:id="@+id/etConfirmInsc"
+                    style="@style/Champ"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="20dp"
                     android:inputType="textPassword" />
 
                 <com.google.android.material.button.MaterialButton

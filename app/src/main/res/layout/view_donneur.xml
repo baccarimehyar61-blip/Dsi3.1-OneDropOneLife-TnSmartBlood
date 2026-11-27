@@ -5,10 +5,37 @@
     android:layout_height="match_parent">
 
     <LinearLayout
+        android:id="@+id/llRacineDonneur"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
+
+        <!-- Chargement / erreur du tableau de bord (le reste est masqué tant que les données ne sont pas là) -->
+        <LinearLayout
+            android:id="@+id/llEtatDonneur"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvEtatDonneur"
+                style="@style/Gris"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReessayer"
+                style="@style/BoutonContour"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Réessayer" />
+        </LinearLayout>
 
         <!-- ===== En-tête ===== -->
         <LinearLayout

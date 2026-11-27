@@ -1,5 +1,12 @@
 package isetb.projet.tunisiasmartblood
 
+// ===========================================================================================
+// DONNÉES SIMULÉES (en mémoire, perdues à la fermeture de l'application).
+// Le backend n'expose pas encore d'endpoint pour : campagnes, annonces, créneaux, rendez-vous
+// côté centre, validation des comptes. Même situation que dans l'application Angular.
+// Tout ce qui existe côté serveur (connexion, donneurs, centres, rendez-vous) passe par l'API.
+// ===========================================================================================
+
 data class Campagne(
     val id: Int, val titre: String, val organisateur: String,
     val lieu: String, val gouvernorat: String, val date: String, val horaire: String,
@@ -13,23 +20,18 @@ data class Annonce(
 
 data class Compte(
     val role: String, val nom: String, val email: String,
-    val gouvernorat: String? = null, val telephone: String? = null, val adresse: String? = null,
-    val prenom: String? = null, val groupe: String? = null
+    val gouvernorat: String? = null, val telephone: String? = null, val adresse: String? = null
 )
+
 data class CompteAttente(val id: Int, val nom: String, val type: String, val gouvernorat: String, val email: String)
-data class Donneur(val id: Int, val nom: String, val groupe: String, val gouvernorat: String, var statut: String)
-data class Centre(val id: Int, val nom: String, val type: String, val gouvernorat: String, var statut: String)
+
+/** Donneur actif connu de la plateforme, SIMULÉ : un établissement n'a pas de compte serveur pour lire /donneurs. */
+data class DonneurDemo(val id: Int, val nom: String, val groupe: String, val gouvernorat: String, var statut: String)
+
 data class Creneau(val id: Int, val date: String, val horaire: String, val places: Int, val reservees: Int)
+
+/** Rendez-vous reçus par un centre (SIMULÉ : les centres ne peuvent pas encore s'authentifier côté serveur). */
 data class RendezVous(val id: Int, val donneur: String, val groupe: String, val creneau: String, var statut: String)
-data class RdvDonneur(val id: Int, val centreNom: String, val dateHeure: Long, var statut: String, val idRdvCentre: Int)
-
-// ----- Session (à remplacer plus tard par Spring Boot + JWT) -----
-const val ADMIN_EMAIL = "admin@tsb.tn"
-const val ADMIN_MDP = "Admin123!"
-var compteConnecte: Compte? = null
-var jeton: String? = null   // jeton JWT reçu du backend
-
-var adminConnecte = false
 
 private var compteurId = 1000
 fun nouvelId() = ++compteurId
@@ -42,26 +44,19 @@ val listeGouvernorats = listOf(
 
 val listeGroupes = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
 
-
 val comptesEnAttente = mutableListOf(
     CompteAttente(1, "Centre de transfusion de Gabès", "Centre de collecte", "Gabès", "contact@ctsgabes.tn"),
     CompteAttente(2, "Clinique El Manar", "Établissement de santé", "Tunis", "contact@elmanar.tn"),
     CompteAttente(3, "Hôpital régional de Gafsa", "Établissement de santé", "Gafsa", "contact@hrgafsa.tn")
 )
 
-val donneurs = mutableListOf(
-    Donneur(1, "Ben Salah Amine", "O+", "Tunis", "Actif"),
-    Donneur(2, "Trabelsi Sarra", "A+", "Sousse", "Actif"),
-    Donneur(3, "Gharbi Walid", "B-", "Sfax", "Actif"),
-    Donneur(4, "Jlassi Nour", "O-", "Béja", "Actif"),
-    Donneur(5, "Mansouri Khaled", "AB+", "Ariana", "Suspendu"),
-    Donneur(6, "Hamdi Ines", "A+", "Nabeul", "Actif")
-)
-
-val centres = mutableListOf(
-    Centre(1, "Centre National de Transfusion Sanguine", "Centre de collecte", "Tunis", "Actif"),
-    Centre(2, "Centre régional de Sousse", "Centre de collecte", "Sousse", "Actif"),
-    Centre(3, "Hôpital Charles Nicolle", "Établissement de santé", "Tunis", "Actif")
+val donneursDemo = mutableListOf(
+    DonneurDemo(1, "Ben Salah Amine", "O+", "Tunis", "Actif"),
+    DonneurDemo(2, "Trabelsi Sarra", "A+", "Sousse", "Actif"),
+    DonneurDemo(3, "Gharbi Walid", "B-", "Sfax", "Actif"),
+    DonneurDemo(4, "Jlassi Nour", "O-", "Béja", "Actif"),
+    DonneurDemo(5, "Mansouri Khaled", "AB+", "Ariana", "Suspendu"),
+    DonneurDemo(6, "Hamdi Ines", "A+", "Nabeul", "Actif")
 )
 
 val creneaux = mutableListOf(
@@ -78,15 +73,12 @@ val rendezVous = mutableListOf(
     RendezVous(5, "Gharbi Walid", "B-", "12 décembre 2026 · 13h00", "Participation enregistrée")
 )
 
-val rdvDonneur = mutableListOf<RdvDonneur>()
-
-fun campagnesCentre() = campagnes.filter { it.organisateur == compteConnecte?.nom }
-fun mesAnnonces() = annonces.filter { it.etablissement == compteConnecte?.nom }
+fun campagnesCentre() = campagnes.filter { it.organisateur == Session.nom }
+fun mesAnnonces() = annonces.filter { it.etablissement == Session.nom }
 fun rdvEnAttente() = rendezVous.count { it.statut == "En attente" }
 
-
 val campagnes = mutableListOf(
-    Campagne(1, "Grande collecte de fin d'année", "Centre National de Transfusion Sanguine", "Avenue Jean Jaurès, Tunis", "Tunis", "12 décembre 2026", "08h30 – 15h00"),
+    Campagne(1, "Grande collecte de fin d'année", "Centre National de Transfusion Sanguine", "Avenue Jean Jaurès, Tunis", "Tunis", "12 décembre 2026", "08h30 – 15h00", "O+, O-, A+"),
     Campagne(2, "Collecte universitaire", "Association Jeunes Solidaires", "Campus universitaire, Ariana", "Ariana", "15 décembre 2026", "09h00 – 14h00"),
     Campagne(3, "Don de sang au cœur de Sousse", "Centre régional de Sousse", "Place de la Médina, Sousse", "Sousse", "19 décembre 2026", "08h00 – 13h00"),
     Campagne(4, "Journée solidaire de Sfax", "Hôpital Habib Bourguiba", "Route de l'Aéroport, Sfax", "Sfax", "22 décembre 2026", "08h30 – 16h00"),
@@ -109,7 +101,7 @@ val annonces = mutableListOf(
     Annonce(12, "A+", false, "Hôpital régional du Kef", "Kef", "Recherche de donneurs A+ pour le service de médecine interne.", "Il y a 3 jours"),
     Annonce(13, "O-", true, "Hôpital de Siliana", "Siliana", "Donneurs O- recherchés en urgence : donneur universel, stock presque épuisé.", "Il y a 1 heure"),
     Annonce(14, "B-", false, "Hôpital Fattouma Bourguiba", "Monastir", "Appel aux donneurs B- pour le service d'oncologie.", "Hier"),
-    Annonce(15, "AB+", false, "Hôpital Tahar Sfar", "Mahdia", "Les donneurs AB+ sont invités à se présenté au centre de transfusion.", "Il y a 2 jours"),
+    Annonce(15, "AB+", false, "Hôpital Tahar Sfar", "Mahdia", "Les donneurs AB+ sont invités à se présenter au centre de transfusion.", "Il y a 2 jours"),
     Annonce(16, "B+", true, "Hôpital Ibn El Jazzar", "Kairouan", "Besoin urgent de donneurs B+ pour des patients dialysés.", "Il y a 3 heures"),
     Annonce(17, "AB-", false, "Hôpital régional de Kasserine", "Kasserine", "Recherche de donneurs AB- pour constituer une réserve de sécurité.", "Il y a 4 jours"),
     Annonce(18, "A-", false, "Hôpital régional de Sidi Bouzid", "Sidi Bouzid", "Donneurs A- bienvenus tous les matins, de 8h à 13h.", "Il y a 2 jours"),

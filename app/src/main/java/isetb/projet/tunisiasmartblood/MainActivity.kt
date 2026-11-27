@@ -8,10 +8,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.InputType
-import android.util.Patterns
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -23,33 +20,38 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import isetb.projet.tunisiasmartblood.databinding.ActivityMainBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemAnnonceBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemCampagneBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemCarteBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemGestionBinding
-import isetb.projet.tunisiasmartblood.databinding.ViewEspaceBinding
 import isetb.projet.tunisiasmartblood.databinding.ItemRdvBinding
+import isetb.projet.tunisiasmartblood.databinding.ViewEspaceBinding
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
+
 private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
 private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 private const val TYPE_EMAIL = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
 
+/** Centre affiché par l'administration : réel (id > 0) ou issu d'un compte validé en simulation (id < 0). */
+private data class CentreAdmin(val id: Long, val nom: String, val ville: String, var actif: Boolean)
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var b: ActivityMainBinding
-
-    // Handler unique, annulé dans onDestroy (évite un crash après fermeture)
-    private val handler = Handler(Looper.getMainLooper())
 
     private var filtreGouvCamp = ""
     private var filtreGroupe = ""
@@ -57,25 +59,33 @@ class MainActivity : AppCompatActivity() {
 
     private var modeAdmin = false
     private var roleInscription = "donneur"
-    private var jeton: String? = null
+    private var connexionEnCours = false
+    private var inscriptionEnCours = false
 
-    private var ongletAdmin = "comptes"
+    private var ongletAdmin = "rendezvous"
     private var ongletCentre = "rendezvous"
     private var ongletEtab = "besoins"
     private var retourAdmin = ""
+    private var retourEspace = ""
+
+    // Espace donneur (données réelles de l'API)
     private var msgDonneur = ""
     private var erreurDonneur = ""
     private var rdvChoisi: Calendar? = null
-    private var centresDispo = listOf<Centre>()
-    private var retourEspace = ""
+    private var donneurMoi: DonneurApi? = null
+    private var centresApi = listOf<CentreApi>()
+    private var rdvDonneur = listOf<RdvApi>()
+    private var reservationEnCours = false
+
+    // Espace administrateur (données réelles de l'API)
+    private var adminDonneurs = listOf<DonneurApi>()
+    private var adminCentres = mutableListOf<CentreAdmin>()
+    private var adminRdv = listOf<RdvApi>()
+
     private val rolesConnexion = listOf("donneur", "etablissement", "centre")
 
-    private val gouvernorats = listOf(
-        "Tunis", "Ariana", "Ben Arous", "Manouba", "Nabeul", "Zaghouan", "Bizerte", "Béja",
-        "Jendouba", "Kef", "Siliana", "Sousse", "Monastir", "Mahdia", "Sfax", "Kairouan",
-        "Kasserine", "Sidi Bouzid", "Gabès", "Medenine", "Tataouine", "Gafsa", "Tozeur", "Kebili"
-    )
-    private val groupesSanguins = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+    private val gouvernorats = listeGouvernorats
+    private val groupesSanguins = listeGroupes
 
     private val pourquoi = listOf(
         "Sauver des vies" to "Un simple geste peut faire toute la différence.",
@@ -110,12 +120,13 @@ class MainActivity : AppCompatActivity() {
     )
     private val contactInfos = listOf(
         "Email" to "TunisiaSmartBlood@gmail.tn",
-        "Téléphone" to "+216 70 000 000",
+        "Téléphone" to "+216 70 234 000",
         "Adresse" to "Tunis, Tunisie"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Session.init(this)
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
 
@@ -159,16 +170,22 @@ class MainActivity : AppCompatActivity() {
             afficherAnnonces()
         }
 
+        // Date de naissance : jamais dans le futur
         b.etDate.setOnClickListener {
-            DatePickerDialog(this, { _, y, m, d ->
-                b.etDate.setText(String.format("%02d/%02d/%04d", d, m + 1, y))
-            }, 2000, 0, 1).show()
+            val c = Calendar.getInstance()
+            val dialogue = DatePickerDialog(this, { _, y, m, d ->
+                b.etDate.tag = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                b.etDate.setText(String.format(Locale.US, "%02d/%02d/%04d", d, m + 1, y))
+                b.etDate.error = null
+            }, 2000, 0, 1)
+            dialogue.datePicker.maxDate = c.timeInMillis
+            dialogue.show()
         }
 
         b.logo.setOnClickListener { afficher(b.viewAccueil) }
 
         b.btnTopConnexion.setOnClickListener {
-            if (adminConnecte || compteConnecte != null) deconnexion() else afficher(b.viewConnexion)
+            if (Session.connecte) deconnexion() else afficher(b.viewConnexion)
         }
         b.btnCreerCompte.setOnClickListener { afficher(b.viewChoix) }
         b.btnSInscrire.setOnClickListener { afficher(b.viewChoix) }
@@ -193,7 +210,6 @@ class MainActivity : AppCompatActivity() {
         b.btnRejoindre.setOnClickListener { afficher(b.viewChoix) }
         b.btnEnvoyer.setOnClickListener { envoyerContact() }
 
-        // CORRECTION 1 : l'espace donneur est configuré une seule fois, dès le démarrage
         configurerDonneur()
 
         b.btnModeUser.setOnClickListener { choisirMode(false) }
@@ -201,19 +217,35 @@ class MainActivity : AppCompatActivity() {
         b.btnSeConnecter.setOnClickListener { seConnecter() }
         b.btnInscrire.setOnClickListener { sInscrire() }
 
+        // Bouton « Retour » du téléphone : revient à l'accueil avant de quitter l'application
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (b.viewAccueil.visibility != View.VISIBLE) {
+                    afficher(b.viewAccueil)
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
+
         choisirMode(false)
         majSession()
         majOnglets(b.viewAccueil)
-    }
 
-    // CORRECTION 5 : on annule les actions différées à la fermeture de l'activité
-    override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null)
-        super.onDestroy()
+        // La session survit à la fermeture de l'application (jeton encore valide)
+        if (Session.estValide()) {
+            majSession()
+            if (Session.estAdmin) allerAdmin() else allerEspace()
+        } else {
+            majSession()
+        }
     }
 
     // ----- Navigation -----
     private fun afficher(vue: View) {
+        // L'écran de connexion s'ouvre toujours sur l'onglet « Utilisateur » (comme sur Angular)
+        if (vue == b.viewConnexion && b.viewConnexion.visibility != View.VISIBLE) choisirMode(false)
         listOf(
             b.viewAccueil, b.viewConnexion, b.viewChoix, b.viewInscription,
             b.viewCampagnes, b.viewAnnonces, b.viewApropos, b.viewContact,
@@ -247,25 +279,36 @@ class MainActivity : AppCompatActivity() {
 
     // ----- Session -----
     private fun majSession() {
-        val connecte = adminConnecte || compteConnecte != null
+        val connecte = Session.connecte
         b.btnTopConnexion.text = if (connecte) "Déconnexion" else "Se connecter"
-        b.tabAdmin.visibility = if (adminConnecte) View.VISIBLE else View.GONE
-        b.tabEspace.visibility = if (compteConnecte != null) View.VISIBLE else View.GONE
+        b.tabAdmin.visibility = if (Session.estAdmin) View.VISIBLE else View.GONE
+        b.tabEspace.visibility = if (connecte && !Session.estAdmin) View.VISIBLE else View.GONE
     }
 
-    // CORRECTION 4 : réinitialisation complète de l'état du donneur
+    /** Efface la session (jeton compris) et toutes les données de l'utilisateur en mémoire. */
     private fun deconnexion() {
-        handler.removeCallbacksAndMessages(null)
-        adminConnecte = false
-        compteConnecte = null
+        Session.fermer()
         rdvChoisi = null
         msgDonneur = ""
         erreurDonneur = ""
         retourEspace = ""
         retourAdmin = ""
+        donneurMoi = null
+        centresApi = listOf()
+        rdvDonneur = listOf()
+        adminDonneurs = listOf()
+        adminCentres = mutableListOf()
+        adminRdv = listOf()
         b.viewEspaceDonneur.etDateRdv.text.clear()
         majSession()
         afficher(b.viewAccueil)
+    }
+
+    /** Le serveur a refusé le jeton : retour à la connexion, comme l'intercepteur 401 d'Angular. */
+    private fun sessionExpiree() {
+        deconnexion()
+        afficher(b.viewConnexion)
+        b.tvMessageLogin.text = Regles.MSG_SESSION_EXPIREE
     }
 
     private fun choisirProfil(role: String, verrou: Boolean = false) {
@@ -286,6 +329,11 @@ class MainActivity : AppCompatActivity() {
         b.etNomEtab.hint = nom
         b.etEmailInsc.hint = if (donneur) "votre@email.com" else "contact@etablissement.tn"
         afficher(b.viewInscription)
+    }
+
+    /** « Réserver un créneau » / « Je peux donner » : espace donneur si connecté, sinon connexion. */
+    private fun versReservation() {
+        if (Session.estValide() && Session.role == "donneur") allerEspace() else afficher(b.viewConnexion)
     }
 
     // ----- Campagnes et annonces publiques -----
@@ -317,9 +365,23 @@ class MainActivity : AppCompatActivity() {
             carte.tvOrganisateur.text = c.organisateur
             carte.tvLieu.text = "📍 ${c.lieu}"
             carte.tvHoraire.text = "🕒 ${c.horaire}"
-            carte.btnReserver.setOnClickListener { afficher(b.viewConnexion) }
+            carte.btnReserver.setOnClickListener { versReservation() }
+            // Détail de la campagne (page /campaigns/:id dans l'application Angular)
+            carte.tvTitre.setOnClickListener { detailCampagne(c) }
             b.llCampagnes.addView(carte.root)
         }
+    }
+
+    private fun detailCampagne(c: Campagne) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(c.titre)
+            .setMessage(
+                "Organisée par ${c.organisateur}\n\n📅 ${c.date}\n🕒 ${c.horaire}\n" +
+                        "📍 ${c.lieu} (${c.gouvernorat})\n🩸 ${c.groupes ?: "Tous les groupes"}"
+            )
+            .setPositiveButton("Réserver un créneau") { _, _ -> versReservation() }
+            .setNegativeButton("Fermer", null)
+            .show()
     }
 
     private fun afficherAnnonces() {
@@ -339,7 +401,7 @@ class MainActivity : AppCompatActivity() {
             carte.tvGouvernorat.text = "📍 ${a.gouvernorat}"
             carte.tvPublie.text = "🕒 ${a.publie}"
 
-            carte.btnDonner.setOnClickListener { choisirProfil("donneur", true) }
+            carte.btnDonner.setOnClickListener { versReservation() }
             b.llAnnonces.addView(carte.root)
         }
     }
@@ -373,61 +435,68 @@ class MainActivity : AppCompatActivity() {
         btn.strokeColor = ColorStateList.valueOf(getColor(R.color.rouge))
     }
 
-    // CORRECTION 2 : bloc dupliqué supprimé
+    /**
+     * Connexion. Administrateur et donneur passent par l'API (JWT) ; centre / établissement sont SIMULÉS
+     * (comme dans l'application Angular). Le profil choisi est envoyé au serveur ET vérifié ici :
+     * un compte dont le rôle réel ne correspond pas à l'écran est refusé, sans aucune session ni jeton.
+     */
     private fun seConnecter() {
+        if (connexionEnCours) return
         if (!(requis(b.etEmailLogin, b.etPasswordLogin) && emailValide(b.etEmailLogin))) return
         val email = b.etEmailLogin.text.toString().trim()
         val mdp = b.etPasswordLogin.text.toString()
 
-        // Mode administrateur : inchangé (identifiants locaux)
-        if (modeAdmin) {
-            if (email.lowercase() == ADMIN_EMAIL && mdp == ADMIN_MDP) {
-                adminConnecte = true
-                compteConnecte = null
-                majSession()
-                allerAdmin()
-            } else {
-                b.tvMessageLogin.text = "Accès refusé : identifiants administrateur incorrects."
-            }
+        val profilChoisi = rolesConnexion[b.spProfilConnexion.selectedItemPosition]
+        if (!modeAdmin && profilChoisi != "donneur") {
+            val nom = if (profilChoisi == "centre") "Centre National de Transfusion Sanguine" else "Hôpital Charles Nicolle"
+            Session.ouvrirDemo(profilChoisi, nom, email, "Tunis")
+            majSession()
+            allerEspace()
             return
         }
 
+        val attendu = if (modeAdmin) "admin" else "donneur"
+        connexionEnCours = true
+        b.btnSeConnecter.isEnabled = false
         b.tvMessageLogin.text = "Connexion en cours..."
         lifecycleScope.launch {
-            try {
-                val res = RetrofitClient.api.login(LoginRequest(email, mdp))
-                val auth = res.body()
-                if (res.isSuccessful && auth != null) {
-                    jeton = auth.token
-                    adminConnecte = false
-
-                    val r = auth.role.lowercase()
-                    val role = when {
-                        r.contains("donneur") -> "donneur"
-                        r.contains("centre") -> "centre"
-                        else -> rolesConnexion[b.spProfilConnexion.selectedItemPosition]
+            val res = appeler(protege = false) {
+                RetrofitClient.api.login(LoginRequest(email, mdp, if (modeAdmin) "ADMIN" else "DONNEUR"))
+            }
+            connexionEnCours = false
+            b.btnSeConnecter.isEnabled = true
+            when (res) {
+                is Resultat.Ok -> {
+                    val auth = res.valeur
+                    val reel = Regles.roleApplicatif(auth.role)
+                    val refus = Regles.verifierProfil(attendu, reel)
+                    if (refus != null || reel == null) {
+                        b.tvMessageLogin.text = refus ?: "Ce compte ne peut pas se connecter."
+                        return@launch
                     }
-                    compteConnecte = Compte(role, auth.nom, auth.email)
-
-                    b.tvMessageLogin.text = "Connexion réussie !"
+                    Session.ouvrirApi(reel, auth)
+                    b.tvMessageLogin.text = ""
+                    b.etPasswordLogin.text.clear()
                     majSession()
-                    ouvrirEspaceApres()
-                } else if (res.code() == 400 || res.code() == 401 || res.code() == 403) {
-                    b.tvMessageLogin.text = "E-mail ou mot de passe incorrect."
-                } else {
-                    b.tvMessageLogin.text = "Erreur du serveur (${res.code()})."
+                    if (reel == "admin") allerAdmin() else allerEspace()
                 }
-            } catch (e: Exception) {
-                b.tvMessageLogin.text = "Serveur injoignable. Vérifiez que le backend est lancé."
+                is Resultat.Echec -> b.tvMessageLogin.text = when (res.code) {
+                    401 -> if (modeAdmin) "Accès refusé : identifiants administrateur incorrects."
+                    else "Email ou mot de passe incorrect."
+                    403 -> res.serveur ?: res.message // refus de profil renvoyé par le serveur
+                    else -> res.message
+                }
             }
         }
     }
 
-    // CORRECTION 3 : message d'erreur pour les listes déroulantes non choisies
+    /** Inscription : donneur via l'API (compte + fiche), centre / établissement simulés. */
     private fun sInscrire() {
+        if (inscriptionEnCours) return
         b.tvMessageInsc.text = ""
-        var ok = requis(b.etEmailInsc, b.etPasswordInsc)
-        if (b.llDonneur.visibility == View.VISIBLE) {
+        val estDonneur = roleInscription == "donneur"
+        var ok = requis(b.etEmailInsc, b.etPasswordInsc, b.etConfirmInsc)
+        if (estDonneur) {
             ok = requis(b.etNomDonneur, b.etPrenom, b.etDate, b.etTel) && ok
             if (b.spGroupe.selectedItemPosition == 0 || b.spGouvernorat.selectedItemPosition == 0) {
                 ok = false
@@ -436,101 +505,131 @@ class MainActivity : AppCompatActivity() {
         } else {
             ok = requis(b.etNomEtab) && ok
         }
-        if (!(ok && emailValide(b.etEmailInsc))) return
+        if (!ok || !emailValide(b.etEmailInsc)) return
 
         val email = b.etEmailInsc.texte()
         val mdp = b.etPasswordInsc.text.toString()
-        val estDonneur = roleInscription == "donneur"
-
-        val demande = if (estDonneur) {
-            RegisterRequest(
-                nom = b.etNomDonneur.texte(),
-                email = email,
-                motDePasse = mdp,
-                prenom = b.etPrenom.texte(),
-                groupeSanguin = groupeVersApi(b.spGroupe.selectedItem.toString()),
-                ville = b.spGouvernorat.selectedItem.toString(),
-                telephone = b.etTel.texte().filter { it.isDigit() }.takeLast(8)
-            )
-        } else {
-            RegisterRequest(nom = b.etNomEtab.texte(), email = email, motDePasse = mdp)
+        if (!Regles.motDePasseValide(mdp)) {
+            b.etPasswordInsc.error = "6 caractères minimum"
+            return
+        }
+        if (mdp != b.etConfirmInsc.text.toString()) {
+            b.etConfirmInsc.error = "Les mots de passe ne correspondent pas"
+            return
         }
 
+        if (!estDonneur) {
+            // Centre / établissement : démonstration (pas encore dans le backend)
+            Session.ouvrirDemo(roleInscription, b.etNomEtab.texte(), email)
+            majSession()
+            allerEspace()
+            retourEspace = "Compte de démonstration créé : il n'est pas enregistré côté serveur."
+            rafraichirEspace()
+            return
+        }
+
+        if (!Regles.telephoneValide(b.etTel.texte())) {
+            b.etTel.error = "8 chiffres (ex. 22 123 456)"
+            return
+        }
+        val naissance = b.etDate.iso()
+        if (naissance.isNotEmpty() && !Regles.dateNonFuture(naissance)) {
+            b.etDate.error = "La date ne peut pas être dans le futur."
+            return
+        }
+
+        val demande = RegisterRequest(
+            nom = b.etNomDonneur.texte(),
+            email = email,
+            motDePasse = mdp,
+            prenom = b.etPrenom.texte(),
+            groupeSanguin = Regles.groupeVersApi(b.spGroupe.selectedItem.toString()),
+            ville = b.spGouvernorat.selectedItem.toString(),
+            telephone = Regles.normaliserTelephone(b.etTel.texte())
+        )
+
+        inscriptionEnCours = true
+        b.btnInscrire.isEnabled = false
         b.tvMessageInsc.text = "Création du compte..."
         lifecycleScope.launch {
-            try {
-                val res = RetrofitClient.api.register(demande)
-                val auth = res.body()
-                if (res.isSuccessful && auth != null) {
-                    jeton = auth.token
-                    adminConnecte = false
-                    b.tvMessageInsc.text = "Compte créé avec succès !"
-
-                    if (estDonneur) {
-                        val nom = b.etNomDonneur.texte()
-                        val prenom = b.etPrenom.texte()
-                        val groupe = b.spGroupe.selectedItem.toString()
-                        val gouv = b.spGouvernorat.selectedItem.toString()
-                        compteConnecte = Compte("donneur", nom, email, gouv, b.etTel.texte(),
-                            prenom = prenom, groupe = groupe)
-                        donneurs.add(Donneur(nouvelId(), "$nom $prenom", groupe, gouv, "Actif"))
-                        rdvDonneur.clear()
-                    } else {
-                        compteConnecte = Compte(roleInscription, b.etNomEtab.texte(), email)
-                    }
-                    majSession()
-                    ouvrirEspaceApres()
-                } else if (res.code() == 409) {
-                    b.tvMessageInsc.text = "Cet e-mail est déjà utilisé."
-                } else if (res.code() == 400) {
-                    b.tvMessageInsc.text = "Données invalides (mot de passe de 6 caractères minimum, téléphone de 8 chiffres)."
-                } else {
-                    b.tvMessageInsc.text = "Erreur du serveur (${res.code()})."
+            val res = appeler("Inscription impossible.", protege = false) { RetrofitClient.api.register(demande) }
+            inscriptionEnCours = false
+            b.btnInscrire.isEnabled = true
+            when (res) {
+                is Resultat.Ok -> {
+                    // Aucune session n'est ouverte : le donneur se connecte ensuite (comme sur Angular).
+                    listOf(b.etNomDonneur, b.etPrenom, b.etDate, b.etTel, b.etEmailInsc, b.etPasswordInsc, b.etConfirmInsc)
+                        .forEach { it.text.clear(); it.tag = null }
+                    b.spGroupe.setSelection(0)
+                    b.spGouvernorat.setSelection(0)
+                    afficher(b.viewConnexion)
+                    b.tvMessageLogin.text = "Compte créé avec succès ! Vous pouvez maintenant vous connecter."
                 }
-            } catch (e: Exception) {
-                b.tvMessageInsc.text = "Serveur injoignable. Vérifiez que le backend est lancé."
+                is Resultat.Echec -> b.tvMessageInsc.text = res.message
             }
         }
-    }
-
-    // Convertit « O+ » en valeur de l'enum du backend (À VÉRIFIER, voir plus bas)
-    private fun groupeVersApi(g: String): String =
-        g.replace("+", "_POSITIF").replace("-", "_NEGATIF")
-
-    // CORRECTION 5 : utilise le handler unique
-    private fun ouvrirEspaceApres() {
-        handler.removeCallbacksAndMessages(null)
-        handler.postDelayed({
-            if (compteConnecte != null &&
-                (b.viewConnexion.visibility == View.VISIBLE || b.viewInscription.visibility == View.VISIBLE)
-            ) allerEspace()
-        }, 1200)
     }
 
     private fun envoyerContact() {
         val champs = arrayOf(b.etNomContact, b.etEmailContact, b.etSujet, b.etMessageContact)
         if (requis(*champs) && emailValide(b.etEmailContact)) {
-            b.tvMessageContact.text = "Merci ! Votre message a bien été envoyé."
+            // SIMULÉ : le backend n'a pas d'endpoint de contact, rien n'est envoyé.
+            b.tvMessageContact.text =
+                "Merci ! Votre message a été pris en compte (démonstration : aucun email n'est envoyé pour le moment)."
             champs.forEach { it.text.clear() }
         }
     }
 
     // ----- Espace administrateur -----
     private fun allerAdmin() {
-        if (!adminConnecte) return
-        ongletAdmin = "comptes"
+        if (!Session.estAdmin || !Session.estValide()) return
+        ongletAdmin = "rendezvous"
         retourAdmin = ""
+        chargerAdmin()
         rendreAdmin()
         afficher(b.viewAdmin.root)
+    }
+
+    /** Charge donneurs, centres et rendez-vous depuis l'API. */
+    private fun chargerAdmin() {
+        lifecycleScope.launch {
+            when (val r = appeler("Impossible de charger les donneurs.") { RetrofitClient.api.donneurs() }) {
+                is Resultat.Ok -> adminDonneurs = r.valeur
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            when (val r = appeler("Impossible de charger les centres.") { RetrofitClient.api.centres() }) {
+                is Resultat.Ok -> {
+                    val locaux = adminCentres.filter { it.id < 0 }
+                    adminCentres = (r.valeur.map { CentreAdmin(it.id, it.nom, it.ville ?: "", true) } + locaux).toMutableList()
+                }
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            when (val r = appeler("Impossible de charger les rendez-vous.") { RetrofitClient.api.rendezVous() }) {
+                is Resultat.Ok -> adminRdv = r.valeur
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            if (b.viewAdmin.root.visibility == View.VISIBLE) rendreAdmin()
+        }
+    }
+
+    private fun nomDonneur(id: Long) = adminDonneurs.find { it.id == id }?.nomComplet ?: "Donneur n°$id"
+    private fun nomCentre(id: Long) = adminCentres.find { it.id == id }?.nom ?: "Centre n°$id"
+
+    private fun dateRdv(iso: String): String {
+        val d = Regles.date(iso) ?: return iso
+        return SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.FRANCE)
+            .format(Date.from(d.atZone(ZoneId.systemDefault()).toInstant()))
     }
 
     private fun rendreAdmin() {
         val v = b.viewAdmin
         v.tvEtiquette.text = "ADMINISTRATION"
         v.tvTitreEspace.text = "Tableau de bord administrateur"
-        v.tvSousTitre.text = "Validez les comptes, supervisez les campagnes et modérez les annonces."
+        v.tvSousTitre.text = "Validez les comptes, traitez les rendez-vous, supervisez les campagnes et modérez les annonces."
+        v.tvDemo.visibility = View.GONE
         dessinerOnglets(
             v, listOf(
+                "rendezvous" to "Rendez-vous (${adminRdv.count { it.statut == Regles.PLANIFIE }})",
                 "comptes" to "Comptes à valider (${comptesEnAttente.size})",
                 "donneurs" to "Donneurs",
                 "centres" to "Centres",
@@ -545,68 +644,94 @@ class MainActivity : AppCompatActivity() {
         val l = v.llListe
 
         when (ongletAdmin) {
+            "rendezvous" -> {
+                if (adminRdv.isEmpty()) vide(l, "Aucun rendez-vous pour le moment.")
+                adminRdv.forEach { r ->
+                    val a: Pair<String, () -> Unit>? = when (r.statut) {
+                        Regles.PLANIFIE -> "Accepter" to { transitionRdv(r.id, "Rendez-vous accepté.") { RetrofitClient.api.confirmerRdv(r.id) } }
+                        Regles.CONFIRME -> "Marquer effectué" to { transitionRdv(r.id, "Don enregistré : dernier don mis à jour.") { RetrofitClient.api.effectuerRdv(r.id) } }
+                        else -> null
+                    }
+                    val refuser: Pair<String, () -> Unit>? =
+                        if (r.statut == Regles.PLANIFIE)
+                            "Refuser" to { transitionRdv(r.id, "Rendez-vous refusé.") { RetrofitClient.api.refuserRdv(r.id) } }
+                        else null
+                    carteGestion(l, nomDonneur(r.donneurId), badge = Regles.libelleStatut(r.statut),
+                        badgeCouleurs = couleursStatut(r.statut),
+                        texte = nomCentre(r.centreId), meta = "🕒 ${dateRdv(r.dateRendezVous)}",
+                        actionA = a, actionB = refuser)
+                }
+            }
             "comptes" -> {
+                noteSimulation(l, "Fonction simulée : le serveur ne gère pas encore la validation des comptes centres/établissements. Les décisions ne sont pas enregistrées.")
                 if (comptesEnAttente.isEmpty()) vide(l, "Aucun compte en attente de validation.")
                 comptesEnAttente.toList().forEach { c ->
                     carteGestion(l, c.nom, badge = c.type, texte = c.email, meta = "📍 ${c.gouvernorat}",
                         actionA = "Valider" to {
                             comptesEnAttente.removeAll { it.id == c.id }
-                            centres.add(Centre(nouvelId(), c.nom, c.type, c.gouvernorat, "Actif"))
-                            retourAdmin = "Compte « ${c.nom} » validé."
+                            // id négatif = entrée qui n'existe pas côté serveur
+                            adminCentres.add(CentreAdmin(-c.id.toLong(), c.nom, c.gouvernorat, true))
+                            retourAdmin = "Compte « ${c.nom} » validé (simulation : non enregistré côté serveur)."
                             rendreAdmin()
                         },
                         actionB = "Refuser" to {
                             comptesEnAttente.removeAll { it.id == c.id }
-                            retourAdmin = "Compte refusé."
+                            retourAdmin = "Compte refusé (simulation : non enregistré côté serveur)."
                             rendreAdmin()
                         })
                 }
             }
             "donneurs" -> {
-                if (donneurs.isEmpty()) vide(l, "Aucun donneur.")
-                donneurs.toList().forEach { d ->
-                    carteGestion(l, d.nom, groupe = d.groupe, badge = d.statut, badgeUrgent = d.statut == "Suspendu",
-                        meta = "📍 ${d.gouvernorat}",
-                        actionA = (if (d.statut == "Actif") "Suspendre" else "Réactiver") to {
-                            d.statut = if (d.statut == "Actif") "Suspendu" else "Actif"
-                            rendreAdmin()
-                        },
+                if (adminDonneurs.isEmpty()) vide(l, "Aucun donneur.")
+                adminDonneurs.forEach { d ->
+                    carteGestion(l, d.nomComplet, groupe = Regles.groupeDepuisApi(d.groupeSanguin) ?: "?",
+                        badge = if (d.actif) "Actif" else "Suspendu",
+                        badgeCouleurs = if (d.actif) R.color.statut_effectue_fond to R.color.statut_effectue_texte
+                        else R.color.statut_annule_fond to R.color.statut_annule_texte,
+                        meta = "📍 ${d.ville ?: "—"}",
+                        actionA = (if (d.actif) "Suspendre" else "Réactiver") to { basculerDonneur(d) },
                         actionB = "Supprimer" to {
-                            donneurs.removeAll { it.id == d.id }
-                            retourAdmin = "Donneur supprimé."
-                            rendreAdmin()
+                            confirmer("Supprimer le donneur", "${d.nomComplet} sera définitivement supprimé. Cette action est irréversible.", "Supprimer") {
+                                supprimerDonneur(d)
+                            }
                         })
                 }
             }
             "centres" -> {
-                if (centres.isEmpty()) vide(l, "Aucun centre.")
-                centres.toList().forEach { c ->
-                    carteGestion(l, c.nom, badge = "${c.type} · ${c.statut}", badgeUrgent = c.statut == "Suspendu",
-                        meta = "📍 ${c.gouvernorat}",
-                        actionA = (if (c.statut == "Actif") "Suspendre" else "Réactiver") to {
-                            c.statut = if (c.statut == "Actif") "Suspendu" else "Actif"
+                if (adminCentres.isEmpty()) vide(l, "Aucun centre.")
+                adminCentres.toList().forEach { c ->
+                    carteGestion(l, c.nom, badge = "Centre de collecte · ${if (c.actif) "Actif" else "Suspendu"}",
+                        badgeUrgent = !c.actif, meta = "📍 ${c.ville}",
+                        actionA = (if (c.actif) "Suspendre" else "Réactiver") to {
+                            // Le backend n'a pas de statut pour un centre : reste local
+                            c.actif = !c.actif
+                            retourAdmin = "Statut modifié localement : il n'est pas enregistré côté serveur."
                             rendreAdmin()
                         },
                         actionB = "Supprimer" to {
-                            centres.removeAll { it.id == c.id }
-                            retourAdmin = "Centre supprimé."
-                            rendreAdmin()
+                            confirmer("Supprimer le centre", "${c.nom} sera définitivement supprimé. Cette action est irréversible.", "Supprimer") {
+                                supprimerCentre(c)
+                            }
                         })
                 }
             }
             "campagnes" -> {
+                noteSimulation(l, "Données simulées : le serveur n'expose pas encore d'endpoint pour les campagnes.")
                 if (campagnes.isEmpty()) vide(l, "Aucune campagne à superviser.")
                 campagnes.toList().forEach { c ->
                     carteGestion(l, c.titre, badge = c.date, texte = c.organisateur,
                         meta = "📍 ${c.lieu}\n🕒 ${c.horaire}",
                         actionA = "Annuler la campagne" to {
-                            campagnes.removeAll { it.id == c.id }
-                            retourAdmin = "Campagne annulée."
-                            rendreAdmin()
+                            confirmer("Annuler la campagne", "La campagne « ${c.titre} » sera annulée.", "Annuler la campagne") {
+                                campagnes.removeAll { it.id == c.id }
+                                retourAdmin = "Campagne annulée."
+                                rendreAdmin()
+                            }
                         })
                 }
             }
             "annonces" -> {
+                noteSimulation(l, "Données simulées : le serveur n'expose pas encore d'endpoint pour les annonces.")
                 if (annonces.isEmpty()) vide(l, "Aucune annonce à modérer.")
                 annonces.toList().forEach { a ->
                     carteGestion(l, a.etablissement, groupe = a.groupe,
@@ -616,26 +741,91 @@ class MainActivity : AppCompatActivity() {
                             rendreAdmin()
                         },
                         actionB = "Retirer" to {
-                            annonces.removeAll { it.id == a.id }
-                            retourAdmin = "Annonce retirée."
-                            rendreAdmin()
+                            confirmer("Retirer l'annonce", "L'annonce de ${a.etablissement} sera retirée.", "Retirer") {
+                                annonces.removeAll { it.id == a.id }
+                                retourAdmin = "Annonce retirée."
+                                rendreAdmin()
+                            }
                         })
                 }
             }
             else -> {
                 remplir(l, listOf(
-                    "${donneurs.size}" to "Donneurs inscrits",
-                    "${centres.size}" to "Centres et établissements",
+                    "${adminDonneurs.size}" to "Donneurs inscrits",
+                    "${adminCentres.size}" to "Centres et établissements",
                     "${comptesEnAttente.size}" to "Comptes en attente",
                     "${campagnes.size}" to "Campagnes",
                     "${annonces.size}" to "Annonces publiées",
                     "${annonces.count { it.urgent }}" to "Annonces urgentes"
                 ), gros = true)
                 l.addView(texteCentre("Donneurs par groupe : " + groupesSanguins.joinToString("   ·   ") { g ->
-                    "$g : ${donneurs.count { it.groupe == g }}"
+                    "$g : ${adminDonneurs.count { Regles.groupeDepuisApi(it.groupeSanguin) == g }}"
                 }))
                 l.addView(bouton("Générer un rapport") { genererRapport() })
             }
+        }
+    }
+
+    /** Applique une transition de rendez-vous via l'API (confirmer / refuser / effectuer). */
+    private fun transitionRdv(id: Long, succes: String, appel: suspend () -> retrofit2.Response<RdvApi>) {
+        lifecycleScope.launch {
+            when (val r = appeler("Action impossible.") { appel() }) {
+                is Resultat.Ok -> {
+                    adminRdv = adminRdv.map { if (it.id == id) r.valeur else it }
+                    retourAdmin = succes
+                }
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            rendreAdmin()
+        }
+    }
+
+    /** Suspendre / réactiver un donneur : PUT /donneurs/{id} (champ disponible). */
+    private fun basculerDonneur(d: DonneurApi) {
+        val corps = DonneurMajRequest(
+            nom = d.nom, prenom = d.prenom, groupeSanguin = d.groupeSanguin, ville = d.ville ?: "",
+            telephone = Regles.normaliserTelephone(d.telephone ?: ""), dateDernierDon = d.dateDernierDon,
+            disponible = !d.actif
+        )
+        lifecycleScope.launch {
+            when (val r = appeler("Modification impossible.") { RetrofitClient.api.majDonneur(d.id, corps) }) {
+                is Resultat.Ok -> adminDonneurs = adminDonneurs.map { if (it.id == d.id) r.valeur else it }
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            rendreAdmin()
+        }
+    }
+
+    private fun supprimerDonneur(d: DonneurApi) {
+        lifecycleScope.launch {
+            when (val r = appeler("Suppression impossible.") { RetrofitClient.api.supprimerDonneur(d.id) }) {
+                is Resultat.Ok -> {
+                    adminDonneurs = adminDonneurs.filter { it.id != d.id }
+                    retourAdmin = "Donneur supprimé."
+                }
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            rendreAdmin()
+        }
+    }
+
+    private fun supprimerCentre(c: CentreAdmin) {
+        if (c.id < 0) {
+            // Créé localement à partir d'un compte validé (simulation) : rien n'existe côté serveur
+            adminCentres.removeAll { it.id == c.id }
+            retourAdmin = "Centre supprimé."
+            rendreAdmin()
+            return
+        }
+        lifecycleScope.launch {
+            when (val r = appeler("Suppression impossible.") { RetrofitClient.api.supprimerCentre(c.id) }) {
+                is Resultat.Ok -> {
+                    adminCentres.removeAll { it.id == c.id }
+                    retourAdmin = "Centre supprimé."
+                }
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); retourAdmin = r.message }
+            }
+            rendreAdmin()
         }
     }
 
@@ -644,15 +834,17 @@ class MainActivity : AppCompatActivity() {
         val texte = buildString {
             appendLine("Rapport Tunisia Smart Blood - $date")
             appendLine()
-            appendLine("Donneurs inscrits : ${donneurs.size}")
-            appendLine("Centres et établissements : ${centres.size}")
+            appendLine("Donneurs inscrits : ${adminDonneurs.size}")
+            appendLine("Centres et établissements : ${adminCentres.size}")
             appendLine("Comptes en attente de validation : ${comptesEnAttente.size}")
             appendLine("Campagnes : ${campagnes.size}")
             appendLine("Annonces publiées : ${annonces.size}")
             appendLine("Annonces urgentes : ${annonces.count { it.urgent }}")
             appendLine()
             appendLine("Donneurs par groupe sanguin :")
-            groupesSanguins.forEach { g -> appendLine(" - $g : ${donneurs.count { it.groupe == g }}") }
+            groupesSanguins.forEach { g ->
+                appendLine(" - $g : ${adminDonneurs.count { Regles.groupeDepuisApi(it.groupeSanguin) == g }}")
+            }
         }
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -666,14 +858,15 @@ class MainActivity : AppCompatActivity() {
 
     // ----- Espaces connectés -----
     private fun allerEspace() {
-        val cpt = compteConnecte ?: return
+        if (!Session.estValide()) return
+        val cpt = Session.compte() ?: return
         retourEspace = ""
         when (cpt.role) {
             "donneur" -> {
                 msgDonneur = ""
                 erreurDonneur = ""
-                rendreDonneur()
                 afficher(b.viewEspaceDonneur.root)
+                chargerDonneur()
             }
             "centre" -> {
                 ongletCentre = "rendezvous"
@@ -689,20 +882,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun rafraichirEspace() {
-        when (compteConnecte?.role) {
+        when (Session.role) {
             "centre" -> rendreCentre()
             "donneur" -> rendreDonneur()
             else -> rendreEtab()
         }
     }
 
-    // ----- Espace centre de collecte -----
+    private fun noteDemo(v: ViewEspaceBinding, texte: String) {
+        v.tvDemo.text = texte
+        v.tvDemo.visibility = View.VISIBLE
+    }
+
+    private fun noteSimulation(parent: LinearLayout, texte: String) {
+        parent.addView(TextView(this, null, 0, R.style.Gris).apply {
+            text = texte
+            textSize = 13f
+            gravity = Gravity.CENTER
+            layoutParams = lp(bottom = 12)
+        })
+    }
+
+    // ----- Espace centre de collecte (SIMULÉ) -----
     private fun rendreCentre() {
         val v = b.viewEspaceCentre
-        val cpt = compteConnecte ?: return
+        val cpt = Session.compte() ?: return
         v.tvEtiquette.text = "ESPACE CENTRE DE COLLECTE"
         v.tvTitreEspace.text = cpt.nom
         v.tvSousTitre.text = "Gérez vos campagnes, vos créneaux et vos rendez-vous."
+        noteDemo(v, "Mode démonstration : les centres n'ont pas encore de compte côté serveur. Les rendez-vous, campagnes, créneaux et urgences ci-dessous sont simulés et ne sont pas enregistrés.")
         dessinerOnglets(
             v, listOf(
                 "rendezvous" to "Rendez-vous (${rdvEnAttente()} en attente)",
@@ -758,7 +966,11 @@ class MainActivity : AppCompatActivity() {
                         v.tvRetour.text = "Veuillez remplir tous les champs."
                         return@bouton
                     }
-                    if (fin.iso() <= debut.iso()) {
+                    if (!Regles.dateNonPassee(date.iso())) {
+                        v.tvRetour.text = "La date ne peut pas être dans le passé."
+                        return@bouton
+                    }
+                    if (!Regles.finApresDebut(debut.iso(), fin.iso())) {
                         v.tvRetour.text = "L'heure de fin doit être après l'heure de début."
                         return@bouton
                     }
@@ -776,11 +988,13 @@ class MainActivity : AppCompatActivity() {
                 if (mes.isEmpty()) vide(l, "Vous n'avez pas encore publié de campagne.")
                 mes.forEach { c ->
                     carteGestion(l, c.titre, badge = c.date,
-                        meta = "📍 ${c.lieu}\n🕒 ${c.horaire}\n🩸 ${c.groupes ?: ""}",
+                        meta = "📍 ${c.lieu}\n🕒 ${c.horaire}\n🩸 ${c.groupes ?: "Tous les groupes"}",
                         actionA = "Annuler la campagne" to {
-                            campagnes.removeAll { it.id == c.id }
-                            retourEspace = "Campagne annulée."
-                            rendreCentre()
+                            confirmer("Annuler la campagne", "Cette campagne ne sera plus visible. Continuer ?", "Annuler la campagne") {
+                                campagnes.removeAll { it.id == c.id }
+                                retourEspace = "Campagne annulée."
+                                rendreCentre()
+                            }
                         })
                 }
             }
@@ -796,7 +1010,11 @@ class MainActivity : AppCompatActivity() {
                         v.tvRetour.text = "Veuillez remplir tous les champs."
                         return@bouton
                     }
-                    if (fin.iso() <= debut.iso()) {
+                    if (!Regles.dateNonPassee(date.iso())) {
+                        v.tvRetour.text = "La date ne peut pas être dans le passé."
+                        return@bouton
+                    }
+                    if (!Regles.finApresDebut(debut.iso(), fin.iso())) {
                         v.tvRetour.text = "L'heure de fin doit être après l'heure de début."
                         return@bouton
                     }
@@ -822,7 +1040,7 @@ class MainActivity : AppCompatActivity() {
             }
             "stats" -> {
                 val participations = rendezVous.count { it.statut == "Participation enregistrée" }
-                val valides = rendezVous.count { it.statut != "Annulé" }
+                val valides = rendezVous.count { it.statut != "Annulé" && it.statut != "Refusé" }
                 val taux = if (valides > 0) Math.round(participations * 100f / valides) else 0
                 remplir(l, listOf(
                     "${campagnesCentre().size}" to "Campagnes publiées",
@@ -847,13 +1065,14 @@ class MainActivity : AppCompatActivity() {
         rendreCentre()
     }
 
-    // ----- Espace établissement de santé -----
+    // ----- Espace établissement de santé (SIMULÉ) -----
     private fun rendreEtab() {
         val v = b.viewEspaceEtab
-        val cpt = compteConnecte ?: return
+        val cpt = Session.compte() ?: return
         v.tvEtiquette.text = "ESPACE ÉTABLISSEMENT DE SANTÉ"
         v.tvTitreEspace.text = cpt.nom
         v.tvSousTitre.text = "Signalez vos besoins en sang avec le groupe recherché et le lieu concerné."
+        noteDemo(v, "Mode démonstration : les établissements n'ont pas encore de compte côté serveur. Les besoins publiés et les statistiques ci-dessous sont simulés et ne sont pas enregistrés.")
         dessinerOnglets(
             v, listOf(
                 "besoins" to "Besoins en sang",
@@ -875,10 +1094,10 @@ class MainActivity : AppCompatActivity() {
                 remplir(v.llListe, listOf(
                     "${a.size}" to "Besoins publiés",
                     "${a.count { it.urgent }}" to "Besoins urgents",
-                    "${donneurs.count { it.statut == "Actif" }}" to "Donneurs actifs"
+                    "${donneursDemo.count { it.statut == "Actif" }}" to "Donneurs actifs"
                 ), gros = true)
                 v.llListe.addView(texteCentre("Donneurs actifs par groupe : " + groupesSanguins.joinToString("   ·   ") { g ->
-                    "$g : ${donneurs.count { it.statut == "Actif" && it.groupe == g }}"
+                    "$g : ${donneursDemo.count { it.statut == "Actif" && it.groupe == g }}"
                 }))
             }
             else -> formProfil(v)
@@ -905,9 +1124,9 @@ class MainActivity : AppCompatActivity() {
             }
             annonces.add(0, Annonce(
                 nouvelId(), groupe.valeur(), centre || urgent.isChecked,
-                compteConnecte?.nom ?: "", gouv.valeur(), desc.texte(), "À l'instant"
+                Session.nom, gouv.valeur(), desc.texte(), "À l'instant"
             ))
-            retourEspace = if (centre) "Message d'urgence publié." else "Besoin publié."
+            retourEspace = "Besoin publié."
             rafraichirEspace()
         })
     }
@@ -919,9 +1138,14 @@ class MainActivity : AppCompatActivity() {
         if (data.isEmpty()) vide(l, msgVide)
         data.forEach { a ->
             val retirer: Pair<String, () -> Unit> = "Retirer" to {
-                annonces.removeAll { it.id == a.id }
-                retourEspace = "Annonce retirée."
-                rafraichirEspace()
+                val retirerAnnonce = {
+                    annonces.removeAll { it.id == a.id }
+                    retourEspace = "Annonce retirée."
+                    rafraichirEspace()
+                }
+                if (avecUrgence) {
+                    confirmer("Retirer le besoin", "Ce besoin ne sera plus visible par les donneurs. Continuer ?", "Retirer") { retirerAnnonce() }
+                } else retirerAnnonce()
             }
             if (avecUrgence) {
                 carteGestion(l, a.gouvernorat, groupe = a.groupe, badge = if (a.urgent) "URGENT" else null,
@@ -939,7 +1163,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun formProfil(v: ViewEspaceBinding) {
-        val cpt = compteConnecte ?: return
+        val cpt = Session.compte() ?: return
         val f = v.llForm
         titreForm(f, "Mon profil")
         champTexte(f, if (cpt.role == "centre") "Nom du centre" else "Nom de l'établissement", valeur = cpt.nom, actif = false)
@@ -952,14 +1176,15 @@ class MainActivity : AppCompatActivity() {
             valeur = cpt.adresse ?: ""
         )
         f.addView(bouton("Enregistrer") {
-            if (!Patterns.EMAIL_ADDRESS.matcher(email.texte()).matches()) {
+            if (!Regles.emailValide(email.texte())) {
                 v.tvRetour.text = "Veuillez saisir un email valide."
                 return@bouton
             }
-            compteConnecte = cpt.copy(
-                email = email.texte(), gouvernorat = gouv.valeur(),
-                telephone = tel.texte(), adresse = adr.texte()
-            )
+            if (tel.texte().isNotEmpty() && !Regles.telephoneValide(tel.texte())) {
+                v.tvRetour.text = "Le téléphone doit contenir 8 chiffres (ex. 22 123 456)."
+                return@bouton
+            }
+            Session.majProfilDemo(email.texte(), gouv.valeur(), tel.texte(), adr.texte())
             retourEspace = "Profil mis à jour."
             rafraichirEspace()
         })
@@ -981,6 +1206,16 @@ class MainActivity : AppCompatActivity() {
     } catch (e: Exception) { iso }
 
     private fun heure(h: String) = h.replace(":", "h")
+
+    /** Boîte de confirmation avant une action destructive (équivalent de ConfirmationService côté Angular). */
+    private fun confirmer(titre: String, message: String, libelleOk: String, action: () -> Unit) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(titre)
+            .setMessage(message)
+            .setNegativeButton("Annuler", null)
+            .setPositiveButton(libelleOk) { _, _ -> action() }
+            .show()
+    }
 
     private fun dessinerOnglets(
         v: ViewEspaceBinding, items: List<Pair<String, String>>, actif: String, choisir: (String) -> Unit
@@ -1007,6 +1242,7 @@ class MainActivity : AppCompatActivity() {
     private fun carteGestion(
         parent: LinearLayout, titre: String, groupe: String? = null, badge: String? = null,
         badgeUrgent: Boolean = false, texte: String? = null, meta: String? = null,
+        badgeCouleurs: Pair<Int, Int>? = null,
         actionA: Pair<String, () -> Unit>? = null, actionB: Pair<String, () -> Unit>? = null
     ) {
         val c = ItemGestionBinding.inflate(layoutInflater, parent, false)
@@ -1019,6 +1255,13 @@ class MainActivity : AppCompatActivity() {
         c.tvBadge.maj(badge)
         c.tvBadge.setBackgroundResource(if (badgeUrgent) R.drawable.bg_urgent else R.drawable.bg_groupe)
         c.tvBadge.setTextColor(getColor(if (badgeUrgent) R.color.white else R.color.rouge))
+        if (badgeCouleurs != null) {
+            // couleur propre au statut (en attente / confirmé / effectué / refusé…), comme les badges d'Angular
+            c.tvBadge.backgroundTintList = ColorStateList.valueOf(getColor(badgeCouleurs.first))
+            c.tvBadge.setTextColor(getColor(badgeCouleurs.second))
+        } else {
+            c.tvBadge.backgroundTintList = null
+        }
         c.rowHaut.visibility = if (groupe != null || badge != null) View.VISIBLE else View.GONE
         c.tvTexte.maj(texte)
         c.tvMeta.maj(meta)
@@ -1091,10 +1334,12 @@ class MainActivity : AppCompatActivity() {
         e.isCursorVisible = false
         e.setOnClickListener {
             val c = Calendar.getInstance()
-            DatePickerDialog(this, { _, y, m, d ->
-                e.tag = String.format("%04d-%02d-%02d", y, m + 1, d)
-                e.setText(String.format("%02d/%02d/%04d", d, m + 1, y))
-            }, c[Calendar.YEAR], c[Calendar.MONTH], c[Calendar.DAY_OF_MONTH]).show()
+            val dialogue = DatePickerDialog(this, { _, y, m, d ->
+                e.tag = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+                e.setText(String.format(Locale.US, "%02d/%02d/%04d", d, m + 1, y))
+            }, c[Calendar.YEAR], c[Calendar.MONTH], c[Calendar.DAY_OF_MONTH])
+            dialogue.datePicker.minDate = c.timeInMillis - 1000
+            dialogue.show()
         }
         return e
     }
@@ -1105,8 +1350,8 @@ class MainActivity : AppCompatActivity() {
         e.isCursorVisible = false
         e.setOnClickListener {
             TimePickerDialog(this, { _, h, m ->
-                e.tag = String.format("%02d:%02d", h, m)
-                e.setText(heure(String.format("%02d:%02d", h, m)))
+                e.tag = String.format(Locale.US, "%02d:%02d", h, m)
+                e.setText(heure(String.format(Locale.US, "%02d:%02d", h, m)))
             }, 8, 0, true).show()
         }
         return e
@@ -1153,7 +1398,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun emailValide(champ: EditText): Boolean {
-        val ok = Patterns.EMAIL_ADDRESS.matcher(champ.text.toString().trim()).matches()
+        val ok = Regles.emailValide(champ.text.toString())
         if (!ok) champ.error = "Email invalide"
         return ok
     }
@@ -1183,19 +1428,17 @@ class MainActivity : AppCompatActivity() {
         b.llProfils.addView(c.root)
     }
 
-    // ----- Espace donneur -----
+    // ----- Espace donneur (API réelle : /donneurs/moi, /centres, /rendez-vous) -----
     private fun fmt(motif: String, ms: Long) =
         SimpleDateFormat(motif, Locale.FRANCE).format(Date(ms))
 
-    private fun libelleStatut(s: String) = when (s) {
-        "PLANIFIE" -> "Planifié"
-        "EFFECTUE" -> "Effectué"
-        else -> "Annulé"
-    }
+    private fun msDe(iso: String): Long =
+        (Regles.date(iso) ?: LocalDateTime.now()).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     private fun couleursStatut(s: String) = when (s) {
-        "PLANIFIE" -> R.color.statut_planifie_fond to R.color.statut_planifie_texte
-        "EFFECTUE" -> R.color.statut_effectue_fond to R.color.statut_effectue_texte
+        Regles.PLANIFIE -> R.color.statut_attente_fond to R.color.statut_attente_texte
+        Regles.CONFIRME -> R.color.statut_planifie_fond to R.color.statut_planifie_texte
+        Regles.EFFECTUE -> R.color.statut_effectue_fond to R.color.statut_effectue_texte
         else -> R.color.statut_annule_fond to R.color.statut_annule_texte
     }
 
@@ -1203,20 +1446,78 @@ class MainActivity : AppCompatActivity() {
         val v = b.viewEspaceDonneur
         v.btnSortir.setOnClickListener { deconnexion() }
         v.btnReserver.setOnClickListener { reserverRdv() }
+        v.btnReessayer.setOnClickListener { chargerDonneur() }
         v.etDateRdv.setOnClickListener { choisirDateHeure(v.etDateRdv) }
+    }
+
+    /** Affiche soit l'état (chargement / erreur), soit le tableau de bord. */
+    private fun montrerDonneur(contenu: Boolean, etat: String = "", reessayer: Boolean = false) {
+        val v = b.viewEspaceDonneur
+        val racine = v.llRacineDonneur
+        for (i in 0 until racine.childCount) {
+            val enfant = racine.getChildAt(i)
+            enfant.visibility = if (enfant == v.llEtatDonneur) {
+                if (contenu) View.GONE else View.VISIBLE
+            } else {
+                if (contenu) View.VISIBLE else View.GONE
+            }
+        }
+        v.tvEtatDonneur.text = etat
+        v.btnReessayer.visibility = if (reessayer) View.VISIBLE else View.GONE
+    }
+
+    private fun chargerDonneur() {
+        montrerDonneur(false, "Chargement de votre espace…")
+        lifecycleScope.launch {
+            val moi = appeler("Impossible de charger votre espace donneur.") { RetrofitClient.api.donneurMoi() }
+            if (moi is Resultat.Echec) {
+                if (moi.sessionExpiree) return@launch sessionExpiree()
+                // Jamais de fausses données : on affiche la vraie erreur
+                montrerDonneur(
+                    false,
+                    if (moi.code == 404) "Aucune fiche donneur liée à ce compte." else moi.message,
+                    reessayer = true
+                )
+                return@launch
+            }
+            val d = (moi as Resultat.Ok).valeur
+            donneurMoi = d
+
+            when (val c = appeler("Impossible de charger les centres.") { RetrofitClient.api.centres() }) {
+                is Resultat.Ok -> centresApi = c.valeur
+                is Resultat.Echec -> { if (c.sessionExpiree) return@launch sessionExpiree(); erreurDonneur = c.message; centresApi = listOf() }
+            }
+            when (val r = appeler("Impossible de charger les rendez-vous.") { RetrofitClient.api.rendezVous(d.id) }) {
+                is Resultat.Ok -> rdvDonneur = r.valeur
+                is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); erreurDonneur = r.message; rdvDonneur = listOf() }
+            }
+            rendreDonneur()
+        }
     }
 
     // Android n'a pas de "datetime-local" : on enchaîne deux dialogues
     private fun choisirDateHeure(champ: EditText) {
         val now = Calendar.getInstance()
         val dialogue = DatePickerDialog(this, { _, y, m, d ->
+            // Un jour qui a déjà un rendez-vous en attente ou confirmé n'est pas réservable
+            val jour = String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d)
+            if (jour in Regles.joursBloques(rdvDonneur)) {
+                rdvChoisi = null
+                champ.text.clear()
+                erreurDonneur = "Vous avez déjà un rendez-vous ce jour-là : choisissez une autre date."
+                msgDonneur = ""
+                rendreDonneur()
+                return@DatePickerDialog
+            }
             TimePickerDialog(this, { _, h, min ->
                 val c = Calendar.getInstance().apply {
                     set(y, m, d, h, min, 0)
                     set(Calendar.MILLISECOND, 0)
                 }
                 rdvChoisi = c
+                erreurDonneur = ""
                 champ.setText(fmt("dd/MM/yyyy HH:mm", c.timeInMillis))
+                rendreDonneur()
             }, 9, 30, true).show()
         }, now[Calendar.YEAR], now[Calendar.MONTH], now[Calendar.DAY_OF_MONTH])
         dialogue.datePicker.minDate = System.currentTimeMillis() - 1000 // équivalent de [min]="minDate"
@@ -1225,51 +1526,50 @@ class MainActivity : AppCompatActivity() {
 
     private fun rendreDonneur() {
         val v = b.viewEspaceDonneur
-        val cpt = compteConnecte ?: return
-        val maintenant = System.currentTimeMillis()
+        val d = donneurMoi ?: return
+        montrerDonneur(true)
+        val maintenant = LocalDateTime.now()
 
         // En-tête
-        val prenom = cpt.prenom ?: ""
-        v.tvInitiales.text = (prenom.take(1) + cpt.nom.take(1)).uppercase()
-        v.tvNomDonneur.text = "$prenom ${cpt.nom}".trim()
-        v.tvContact.text = listOfNotNull(cpt.gouvernorat, cpt.telephone)
-            .filter { it.isNotBlank() }.joinToString(" · ")
-        v.llGroupe.visibility = if (cpt.groupe.isNullOrEmpty()) View.GONE else View.VISIBLE
-        v.tvGroupeDonneur.text = cpt.groupe ?: ""
+        v.tvInitiales.text = (d.prenom.take(1) + d.nom.take(1)).uppercase()
+        v.tvNomDonneur.text = d.nomComplet
+        v.tvContact.text = listOfNotNull(d.ville, d.telephone).filter { it.isNotBlank() }.joinToString(" · ")
+        val groupe = Regles.groupeDepuisApi(d.groupeSanguin)
+        v.llGroupe.visibility = if (groupe.isNullOrEmpty()) View.GONE else View.VISIBLE
+        v.tvGroupeDonneur.text = groupe ?: ""
 
         // Statistiques
-        val effectues = rdvDonneur.filter { it.statut == "EFFECTUE" }
-        val planifies = rdvDonneur.filter { it.statut == "PLANIFIE" }
-        v.tvNbEffectues.text = "${effectues.size}"
-        v.tvNbPlanifies.text = "${planifies.size}"
-        val dernier = effectues.maxOfOrNull { it.dateHeure }
-        v.tvDernierDon.text = if (dernier != null) fmt("dd/MM/yyyy", dernier) else "—"
+        val stats = Regles.statsDonneur(d, rdvDonneur)
+        v.tvNbEffectues.text = "${stats.effectues}"
+        v.tvNbPlanifies.text = "${stats.planifies}"
+        v.tvDernierDon.text = stats.dernierDon?.let { fmt("dd/MM/yyyy", msDe(it)) } ?: "—"
 
-        // Prochain rendez-vous : le plus proche parmi les planifiés à venir
-        val prochain = planifies.filter { it.dateHeure >= maintenant }.minByOrNull { it.dateHeure }
+        // Prochain rendez-vous : le plus proche parmi les actifs à venir
+        val prochain = Regles.prochainRdv(rdvDonneur, maintenant)
         v.llProchain.visibility = if (prochain != null) View.VISIBLE else View.GONE
         v.tvVideProchain.visibility = if (prochain == null) View.VISIBLE else View.GONE
         if (prochain != null) {
-            v.tvProchainJour.text = fmt("dd", prochain.dateHeure)
-            v.tvProchainMois.text = fmt("MM/yyyy", prochain.dateHeure)
-            v.tvProchainCentre.text = prochain.centreNom
-            v.tvProchainHeure.text = "à " + fmt("HH:mm", prochain.dateHeure)
+            val ms = msDe(prochain.dateRendezVous)
+            v.tvProchainJour.text = fmt("dd", ms)
+            v.tvProchainMois.text = fmt("MM/yyyy", ms)
+            v.tvProchainCentre.text = nomCentreDonneur(prochain.centreId)
+            v.tvProchainHeure.text = "à " + fmt("HH:mm", ms)
             v.btnProchainAnnuler.setOnClickListener { annulerRdv(prochain.id) }
         }
 
         // Historique (du plus récent au plus ancien)
         v.llHistorique.removeAllViews()
-        val tous = rdvDonneur.sortedByDescending { it.dateHeure }
+        val tous = Regles.historique(rdvDonneur)
         v.tvVideHistorique.visibility = if (tous.isEmpty()) View.VISIBLE else View.GONE
         tous.forEach { r ->
             val c = ItemRdvBinding.inflate(layoutInflater, v.llHistorique, false)
             val (fond, texte) = couleursStatut(r.statut)
-            c.tvCentre.text = r.centreNom
-            c.tvDate.text = fmt("dd/MM/yyyy HH:mm", r.dateHeure)
-            c.tvStatut.text = libelleStatut(r.statut)
+            c.tvCentre.text = nomCentreDonneur(r.centreId)
+            c.tvDate.text = fmt("dd/MM/yyyy HH:mm", msDe(r.dateRendezVous))
+            c.tvStatut.text = Regles.libelleStatut(r.statut)
             c.tvStatut.backgroundTintList = ColorStateList.valueOf(getColor(fond))
             c.tvStatut.setTextColor(getColor(texte))
-            c.btnAnnuler.visibility = if (r.statut == "PLANIFIE") View.VISIBLE else View.GONE
+            c.btnAnnuler.visibility = if (Regles.peutAnnuler(r.statut)) View.VISIBLE else View.GONE
             c.btnAnnuler.setOnClickListener { annulerRdv(r.id) }
             v.llHistorique.addView(c.root)
         }
@@ -1281,47 +1581,71 @@ class MainActivity : AppCompatActivity() {
         v.tvErreurDonneur.visibility = if (erreurDonneur.isEmpty()) View.GONE else View.VISIBLE
 
         // Liste des centres (on garde le choix en cours)
-        centresDispo = centres.filter { it.statut == "Actif" }
         val choix = v.spCentre.selectedItemPosition
         v.spCentre.adapter = ArrayAdapter(
             this, android.R.layout.simple_spinner_dropdown_item,
-            centresDispo.map { "${it.nom} (${it.gouvernorat})" }
+            centresApi.map { "${it.nom} (${it.ville ?: ""})" }
         )
-        if (choix in centresDispo.indices) v.spCentre.setSelection(choix)
+        if (choix in centresApi.indices) v.spCentre.setSelection(choix)
+        v.btnReserver.isEnabled = !reservationEnCours
     }
 
-    private fun annulerRdv(id: Int) {
-        val r = rdvDonneur.find { it.id == id } ?: return
-        r.statut = "ANNULE"
-        // le centre voit aussi l'annulation
-        rendezVous.find { it.id == r.idRdvCentre }?.statut = "Annulé"
-        msgDonneur = "Rendez-vous annulé."
-        erreurDonneur = ""
-        rendreDonneur()
+    private fun nomCentreDonneur(id: Long) = centresApi.find { it.id == id }?.nom ?: "Centre de collecte"
+
+    private fun annulerRdv(id: Long) {
+        confirmer("Annuler le rendez-vous", "Voulez-vous vraiment annuler ce rendez-vous ?", "Annuler le rendez-vous") {
+            msgDonneur = ""
+            erreurDonneur = ""
+            lifecycleScope.launch {
+                when (val r = appeler("Erreur lors de l'annulation.") { RetrofitClient.api.annulerRdv(id) }) {
+                    is Resultat.Ok -> {
+                        rdvDonneur = rdvDonneur.map { if (it.id == id) r.valeur else it }
+                        msgDonneur = "Rendez-vous annulé."
+                    }
+                    is Resultat.Echec -> { if (r.sessionExpiree) return@launch sessionExpiree(); erreurDonneur = r.message }
+                }
+                rendreDonneur()
+            }
+        }
     }
 
     private fun reserverRdv() {
+        if (reservationEnCours) return
         msgDonneur = ""
         erreurDonneur = ""
-        val cpt = compteConnecte ?: return
-        val centre = centresDispo.getOrNull(b.viewEspaceDonneur.spCentre.selectedItemPosition)
+        val d = donneurMoi ?: return
+        val centre = centresApi.getOrNull(b.viewEspaceDonneur.spCentre.selectedItemPosition)
         val date = rdvChoisi
         when {
             centre == null -> erreurDonneur = "Aucun centre disponible."
             date == null -> erreurDonneur = "Veuillez choisir la date et l'heure."
             date.timeInMillis < System.currentTimeMillis() -> erreurDonneur = "La date doit être dans le futur."
             else -> {
-                val ms = date.timeInMillis
-                val idCentre = nouvelId()
-                // Le centre reçoit la demande "En attente" dans son espace
-                rendezVous.add(RendezVous(
-                    idCentre, "${cpt.prenom ?: ""} ${cpt.nom}".trim(), cpt.groupe ?: "",
-                    fmt("d MMMM yyyy · HH'h'mm", ms), "En attente"
-                ))
-                rdvDonneur.add(RdvDonneur(nouvelId(), centre.nom, ms, "PLANIFIE", idCentre))
-                msgDonneur = "Rendez-vous réservé. Le centre le confirmera."
-                rdvChoisi = null
-                b.viewEspaceDonneur.etDateRdv.text.clear()
+                val local = LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault())
+                if (local.toLocalDate().toString() in Regles.joursBloques(rdvDonneur)) {
+                    erreurDonneur = "Vous avez déjà un rendez-vous ce jour-là : choisissez une autre date."
+                } else {
+                    reservationEnCours = true
+                    b.viewEspaceDonneur.btnReserver.isEnabled = false
+                    lifecycleScope.launch {
+                        val corps = RdvRequest(d.id, centre.id, Regles.versApiDateHeure(local))
+                        when (val r = appeler("Erreur lors de la réservation.") { RetrofitClient.api.creerRdv(corps) }) {
+                            is Resultat.Ok -> {
+                                rdvDonneur = rdvDonneur + r.valeur
+                                msgDonneur = "Rendez-vous réservé avec succès."
+                                rdvChoisi = null
+                                b.viewEspaceDonneur.etDateRdv.text.clear()
+                            }
+                            // Règles du serveur (90 jours après le dernier don, un seul rendez-vous par jour…)
+                            is Resultat.Echec -> {
+                                if (r.sessionExpiree) { reservationEnCours = false; return@launch sessionExpiree() }
+                                erreurDonneur = r.message
+                            }
+                        }
+                        reservationEnCours = false
+                        rendreDonneur()
+                    }
+                }
             }
         }
         rendreDonneur()

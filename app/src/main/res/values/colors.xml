@@ -10,6 +10,8 @@
     <color name="white">#FFFFFF</color>
     <color name="statut_planifie_fond">#E3F2FD</color>
     <color name="statut_planifie_texte">#0D47A1</color>
+    <color name="statut_attente_fond">#FFF1D6</color>
+    <color name="statut_attente_texte">#8A5A00</color>
     <color name="statut_effectue_fond">#E8F5E9</color>
     <color name="statut_effectue_texte">#1B5E20</color>
     <color name="statut_annule_fond">#FFEBEE</color>
